@@ -19,7 +19,7 @@ import os
 import os.path
 import hashlib
 
-MOUNT_TABLE_PATH = "/etc/sdm_mtab"
+MOUNT_TABLE_PATH = "~/.sdm/sdm_mtab"
 
 
 class MountTableException(Exception):
@@ -47,9 +47,9 @@ class MountRecord(object):
     def from_line(cls, line):
         fields = line.split("\t")
         if len(fields) == 3:
-            record_id = fields[0].strip().lower()
-            dataset = fields[1].strip().lower()
-            mount_path = fields[2].strip()
+            record_id = fields[0]
+            dataset = fields[1]
+            mount_path = fields[2]
             return MountRecord(record_id, dataset, mount_path)
         else:
             raise MountTableException("unrecognized format - %s" % line)
@@ -74,14 +74,20 @@ class MountTable(object):
         self.load_table(path)
 
     def load_table(self, path=MOUNT_TABLE_PATH):
+        abs_path = os.path.abspath(path.strip())
         self.table = []
-        with open(path, 'r') as f:
+        with open(abs_path, 'r') as f:
             for line in f:
                 record = MountRecord.from_line(line)
                 self.table.append(record)
 
     def save_table(self, path=MOUNT_TABLE_PATH):
-        with open(path, 'w') as f:
+        abs_path = os.path.abspath(path.strip())
+        parent = os.path.dirname(abs_path)
+        if not os.path.exists(parent):
+            os.makedirs(parent, 0755)
+
+        with open(abs_path, 'w') as f:
             for record in self.table:
                 line = record.to_line()
                 f.write(line + "\n")
@@ -125,6 +131,7 @@ class MountTable(object):
 
         if not exist:
             self.table.append(record)
+            return record
         else:
             raise MountTableException("Record already exists - %s" % record)
 

@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-/*
+"""
    Copyright 2016 The Trustees of University of Arizona
 
    Licensed under the Apache License, Version 2.0 (the "License" );
@@ -13,20 +13,24 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-*/
+"""
 
+import os
+import os.path
 import json
 
-CONFIG_PATH = "/etc/sdm.conf"
+CONFIG_PATH = "~/.sdm/sdm.conf"
 
+DEFAULT_REPO_URL = "https://butler.opencloud.cs.arizona.edu/sdm/"
+DEFAULT_MOUNT_PATH = "~/sdm_mounts/"
 
 class Config(object):
     """
     Manage SDM config
     """
     def __init__(self, path=CONFIG_PATH):
-        self.repo_url = ""
-        self.default_mount_path = ""
+        self.repo_url = DEFAULT_REPO_URL
+        self.default_mount_path = DEFAULT_MOUNT_PATH
         self.load_config(path)
 
     def _save_conf(self):
@@ -44,20 +48,22 @@ class Config(object):
                 self.default_mount_path = conf[k].strip()
 
     def load_config(self, path=CONFIG_PATH):
+        abs_path = os.path.abspath(path.strip())
         conf = {}
-        with open(path, 'r') as f:
+        with open(abs_path, 'r') as f:
             conf = json.load(f)
 
         self._load_conf(conf)
 
     def save_config(self, path=CONFIG_PATH):
-        with open(path, 'w') as f:
+        abs_path = os.path.abspath(path.strip())
+        parent = os.path.dirname(abs_path)
+        if not os.path.exists(parent):
+            os.makedirs(parent, 0755)
+
+        with open(abs_path, 'w') as f:
             conf = self._save_conf()
             json.dump(conf, f)
-
-    @classmethod
-    def from_file(cls, path=CONFIG_PATH):
-        return Config(path)
 
     def get_repo_url(self):
         return self.repo_url
