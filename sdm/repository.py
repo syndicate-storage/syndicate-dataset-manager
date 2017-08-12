@@ -80,3 +80,9 @@ class Repository(object):
         if k in self.table:
             return self.table[k]
         return None
+
+    def list_entries(self):
+        entries = []
+        for k in self.table.keys():
+            entries.append(self.table[k])
+        return entries

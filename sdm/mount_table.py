@@ -92,6 +92,12 @@ class MountTable(object):
                 line = record.to_line()
                 f.write(line + "\n")
 
+    def list_records(self):
+        records = []
+        for record in self.table:
+            records.append(record)
+        return records
+
     def get_records_by_record_id(self, record_id):
         rid = record_id.strip().lower()
         ridlen = len(rid)

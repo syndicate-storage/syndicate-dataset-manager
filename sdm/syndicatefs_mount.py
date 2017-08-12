@@ -36,8 +36,8 @@ class SyndicatefsMount(object):
     """
     Manage Syndicatefs Mount
     """
-    def __init__(self, mount_table):
-        self.mount_table = mount_table
+    def __init__(self):
+        pass
 
     def _get_processes(self, name):
         matching_processes = []
@@ -213,6 +213,10 @@ class SyndicatefsMount(object):
 
     def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path):
         print "Mounting syndicatefs, %s to %s" % (dataset, mount_path)
+
+        abs_mount_path = os.path.abspath(mount_path.strip())
+        if not os.path.exists(abs_mount_path):
+            os.makedirs(abs_mount_path, 0755)
 
         confing_root_path = self._make_syndicate_configuration_root_path(mount_id)
         syndicatefs_log_path = "%s/mount.log" % confing_root_path
