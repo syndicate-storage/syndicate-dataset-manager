@@ -23,6 +23,8 @@ import mount_table as sdm_mount_table
 import repository as sdm_repository
 import syndicatefs_mount as sdm_syndicatefs_mount
 
+from os.path import expanduser
+
 
 config = sdm_config.Config()
 mount_table = sdm_mount_table.MountTable()
@@ -79,7 +81,7 @@ def process_mount_dataset(dataset, mount_path):
                 entry.dataset,
                 entry.username,
                 entry.user_pkey,
-                entry.gateway_name,
+                entry.gateway,
                 mount_path
             )
             mount_table.save_table()
@@ -113,7 +115,7 @@ def mount_dataset(argv):
             if len(mount_path) == 0:
                 mount_path = "/"
 
-        abs_mount_path = os.path.abspath(mount_path)
+        abs_mount_path = os.path.abspath(expanduser(mount_path))
         return process_mount_dataset(dataset, abs_mount_path)
     else:
         show_help(["mount"])

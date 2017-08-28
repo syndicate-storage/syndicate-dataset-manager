@@ -34,7 +34,7 @@ class MountRecord(object):
     """
     def __init__(self, record_id="", dataset="", mount_path=""):
         self.dataset = dataset.strip().lower()
-        self.mount_path = mount_path.strip()
+        self.mount_path = os.path.abspath(expanduser(mount_path.strip()))
 
         if record_id:
             self.record_id = record_id.strip().lower()
@@ -123,7 +123,7 @@ class MountTable(object):
         return records
 
     def get_records_by_mount_path(self, mount_path):
-        abs_mount_path = os.path.abspath(mount_path.strip())
+        abs_mount_path = os.path.abspath(expanduser(mount_path.strip()))
 
         records = []
         for record in self.table:

@@ -24,6 +24,8 @@ import tempfile
 import shlex
 import shutil
 
+from os.path import expanduser
+
 SYNDICATEFS_PROCESS_NAME = "syndicatefs"
 SYNDICATE_CONFIG_ROOT_PATH = "~/.sdm/mounts/"
 
@@ -65,7 +67,7 @@ class SyndicatefsMount(object):
         return matching_mounts
 
     def _wait_mount(self, mount_path, timeout=30):
-        abs_mount_path = os.path.abspath(mount_path)
+        abs_mount_path = os.path.abspath(expanduser(mount_path))
 
         tick = 0
         while True:
@@ -106,7 +108,7 @@ class SyndicatefsMount(object):
             SYNDICATE_CONFIG_ROOT_PATH.rstrip("/"),
             mount_id.strip().lower()
         )
-        abs_config_root_path = os.path.abspath(confing_root_path.strip())
+        abs_config_root_path = os.path.abspath(expanduser(confing_root_path.strip()))
         return abs_config_root_path
 
     def _make_syndicate_command(self, mount_id):
@@ -174,9 +176,9 @@ class SyndicatefsMount(object):
         syndicate_command = self._make_syndicate_command(mount_id)
 
         user_pkey_fd, user_pkey_path = tempfile.mkstemp()
-        with os.fdopen(user_pkey_fd, "w") as f:
-            f.write(user_pkey)
-        os.close(user_pkey_fd)
+        f = os.fdopen(user_pkey_fd, "w")
+        f.write(user_pkey)
+        f.close()
 
         command_register = "%s --trust_public_key setup %s %s %s" % (
             syndicate_command,
@@ -184,7 +186,7 @@ class SyndicatefsMount(object):
             user_pkey_path,
             ms_host.strip()
         )
-
+        
         try:
             self._run_command_with_output(command_register)
             print "Successfully registered a syndicate user, %s" % username
@@ -214,7 +216,7 @@ class SyndicatefsMount(object):
     def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path):
         print "Mounting syndicatefs, %s to %s" % (dataset, mount_path)
 
-        abs_mount_path = os.path.abspath(mount_path.strip())
+        abs_mount_path = os.path.abspath(expanduser(mount_path.strip()))
         if not os.path.exists(abs_mount_path):
             os.makedirs(abs_mount_path, 0755)
 
