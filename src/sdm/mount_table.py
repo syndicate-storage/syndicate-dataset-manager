@@ -19,6 +19,8 @@ import os
 import os.path
 import hashlib
 
+from os.path import expanduser
+
 MOUNT_TABLE_PATH = "~/.sdm/sdm_mtab"
 
 
@@ -71,10 +73,13 @@ class MountTable(object):
     """
     def __init__(self, path=MOUNT_TABLE_PATH):
         self.table = []
-        self.load_table(path)
+        try:
+            self.load_table(path)
+        except IOError:
+            self.save_table(path)
 
     def load_table(self, path=MOUNT_TABLE_PATH):
-        abs_path = os.path.abspath(path.strip())
+        abs_path = os.path.abspath(expanduser(path).strip())
         self.table = []
         with open(abs_path, 'r') as f:
             for line in f:
@@ -82,7 +87,7 @@ class MountTable(object):
                 self.table.append(record)
 
     def save_table(self, path=MOUNT_TABLE_PATH):
-        abs_path = os.path.abspath(path.strip())
+        abs_path = os.path.abspath(expanduser(path).strip())
         parent = os.path.dirname(abs_path)
         if not os.path.exists(parent):
             os.makedirs(parent, 0755)

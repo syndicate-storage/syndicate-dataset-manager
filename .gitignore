@@ -1,0 +1,6 @@
+.idea/
+build/
+dist/
+sdm.egg-info/
+*.pyc
+*.log

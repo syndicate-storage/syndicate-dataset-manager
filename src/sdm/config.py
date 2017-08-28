@@ -19,10 +19,13 @@ import os
 import os.path
 import json
 
+from os.path import expanduser
+
 CONFIG_PATH = "~/.sdm/sdm.conf"
 
-DEFAULT_REPO_URL = "https://butler.opencloud.cs.arizona.edu/sdm/"
+DEFAULT_REPO_URL = "https://butler.opencloud.cs.arizona.edu/sdm/catalogue"
 DEFAULT_MOUNT_PATH = "~/sdm_mounts/"
+
 
 class Config(object):
     """
@@ -31,42 +34,51 @@ class Config(object):
     def __init__(self, path=CONFIG_PATH):
         self.repo_url = DEFAULT_REPO_URL
         self.default_mount_path = DEFAULT_MOUNT_PATH
-        self.load_config(path)
+        try:
+            self.load_config(path)
+        except IOError:
+            self.save_config(path)
 
-    def _save_conf(self):
+    def _save(self):
         return {
             "REPO_URL": self.repo_url,
             "DEFAULT_MOUNT_PATH": self.default_mount_path
         }
 
-    def _load_conf(self, conf):
+    def _load(self, conf):
         for k in conf.keys():
-            k = k.strip().lower()
-            if k == "repo_url":
+            kl = k.strip().lower()
+            if kl == "repo_url":
                 self.repo_url = conf[k].strip()
-            elif k == "default_mount_path":
+            elif kl == "default_mount_path":
                 self.default_mount_path = conf[k].strip()
 
     def load_config(self, path=CONFIG_PATH):
-        abs_path = os.path.abspath(path.strip())
+        abs_path = os.path.abspath(expanduser(path).strip())
         conf = {}
         with open(abs_path, 'r') as f:
             conf = json.load(f)
 
-        self._load_conf(conf)
+        self._load(conf)
 
     def save_config(self, path=CONFIG_PATH):
-        abs_path = os.path.abspath(path.strip())
+        abs_path = os.path.abspath(expanduser(path).strip())
         parent = os.path.dirname(abs_path)
         if not os.path.exists(parent):
             os.makedirs(parent, 0755)
 
         with open(abs_path, 'w') as f:
-            conf = self._save_conf()
+            conf = self._save()
             json.dump(conf, f)
 
     def get_repo_url(self):
         return self.repo_url
 
+    def set_repo_rul(self, repo_url):
+        self.repo_url = repo_url
+
     def get_default_mount_path(self):
         return self.default_mount_path
+
+    def set_default_mount_path(self, default_mount_path):
+        self.default_mount_path = default_mount_path

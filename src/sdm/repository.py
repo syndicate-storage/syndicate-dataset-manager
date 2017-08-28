@@ -27,13 +27,50 @@ class RepositoryEntry(object):
     """
     repository entry
     """
-    def __init__(self, ms_host, dataset, username, user_pkey, gateway_name, description):
-        self.ms_host = ms_host.strip()
+    def __init__(self, dataset, ms_host, volume, username, user_pkey, gateway, description):
         self.dataset = dataset.strip().lower()
-        self.username = username.strip().lower()
+        self.ms_host = ms_host.strip()
+        self.volume = volume.strip()
+        self.username = username.strip()
         self.user_pkey = user_pkey
-        self.gateway_name = gateway_name.strip().lower()
+        self.gateway = gateway.strip()
         self.description = description
+
+    @classmethod
+    def from_json(cls, jsonstr):
+        ent = json.loads(jsonstr)
+        return RepositoryEntry(
+            ent["dataset"],
+            ent["ms_host"],
+            ent["volume"],
+            ent["username"],
+            ent["user_pkey"],
+            ent["gateway"],
+            ent["description"]
+        )
+
+    @classmethod
+    def from_dict(cls, ent):
+        return RepositoryEntry(
+            ent["dataset"],
+            ent["ms_host"],
+            ent["volume"],
+            ent["username"],
+            ent["user_pkey"],
+            ent["gateway"],
+            ent["description"]
+        )
+
+    def to_json(self):
+        return json.dumps({
+            "dataset": self.dataset,
+            "ms_host": self.ms_host,
+            "volume": self.volume,
+            "username": self.username,
+            "user_pkey": self.user_pkey,
+            "gateway": self.gateway,
+            "description": self.description
+        })
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -57,21 +94,13 @@ class Repository(object):
 
     def load_table(self, url):
         self.table = {}
-
         try:
             response = urllib.urlopen(url)
-            ent_arr = json.loads(response.read())
+            content = response.read()
+            ent_arr = json.loads(content)
             for ent in ent_arr:
-                entry = RepositoryEntry(
-                    ent["ms_host"],
-                    ent["ms_host"],
-                    ent["dataset"],
-                    ent["username"],
-                    ent["user_pkey"],
-                    ent["gateway_name"],
-                    ent["description"]
-                )
-                self.table[entry.dataset].append(entry)
+                entry = RepositoryEntry.from_dict(ent)
+                self.table[entry.dataset] = entry
         except Exception, e:
             raise RepositoryException("cannot retrieve repository entries : %s" % e)
 

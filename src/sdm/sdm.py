@@ -18,10 +18,10 @@
 import os
 import os.path
 import sys
-import sdm.config as sdm_config
-import sdm.mount_table as sdm_mount_table
-import sdm.repository as sdm_repository
-import sdm.syndicatefs_mount as sdm_syndicatefs_mount
+import config as sdm_config
+import mount_table as sdm_mount_table
+import repository as sdm_repository
+import syndicatefs_mount as sdm_syndicatefs_mount
 
 
 config = sdm_config.Config()
@@ -37,7 +37,7 @@ def list_datasets(argv):
         print "%s\t%s" % ("DATASET", "DESCRIPTION")
         for ent in entries:
             cnt += 1
-            print "%s : %s" % (ent.dataset, ent.description)
+            print "%s\t%s" % (ent.dataset, ent.description)
 
         if cnt == 0:
             print "No available dataset"
@@ -45,7 +45,7 @@ def list_datasets(argv):
         else:
             return 0
     else:
-        show_help(["list"])
+        show_help(["list_datasets"])
         return 1
 
 
@@ -59,12 +59,12 @@ def show_mounts(argv):
             print "%s\t%s\t%s" % (rec.record_id, rec.dataset, rec.mount_path)
 
         if cnt == 0:
-            print "No available dataset"
+            print "No mounts"
             return 0
         else:
             return 0
     else:
-        show_help(["show"])
+        show_help(["show_mounts"])
         return 1
 
 
@@ -146,25 +146,25 @@ def unmount_dataset(argv):
     # args
     # 1. dataset name OR mount_path
     if len(argv) >= 1:
-        if len(sdm_mount_table.get_records_by_dataset(argv[0])) > 0:
+        if len(mount_table.get_records_by_dataset(argv[0])) > 0:
             # dataset
-            records = sdm_mount_table.get_records_by_dataset(argv[0])
+            records = mount_table.get_records_by_dataset(argv[0])
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id)
             else:
                 print "Cannot unmount dataset. There are more %d mounts" % len(records)
                 return 1
-        elif len(sdm_mount_table.get_records_by_mount_path(argv[0])) > 0:
+        elif len(mount_table.get_records_by_mount_path(argv[0])) > 0:
             # maybe path?
-            records = sdm_mount_table.get_records_by_mount_path(argv[0])
+            records = mount_table.get_records_by_mount_path(argv[0])
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id)
             else:
                 print "Cannot unmount dataset. There are more %d mounts" % len(records)
                 return 1
-        elif len(sdm_mount_table.get_records_by_record_id(argv[0])) > 0:
+        elif len(mount_table.get_records_by_record_id(argv[0])) > 0:
             # maybe record_id?
-            records = sdm_mount_table.get_records_by_record_id(argv[0])
+            records = mount_table.get_records_by_record_id(argv[0])
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id)
             else:
@@ -179,8 +179,8 @@ def unmount_dataset(argv):
 
 
 COMMANDS_DESCS = {
-    "list": "list available datasets",
-    "show": "show mounts",
+    "list_datasets": "list available datasets",
+    "show_mounts": "show mounts",
     "mount": "mount a dataset",
     "unmount": "unmount a dataset",
     "help": "show help"
@@ -189,15 +189,15 @@ COMMANDS_DESCS = {
 
 def show_help(argv=None):
     if argv:
-        if "list" in argv:
-            print "command : sdm list"
+        if "list_datasets" in argv:
+            print "command : sdm list_datasets"
             print ""
-            print COMMANDS_DESCS["list"]
+            print COMMANDS_DESCS["list_datasets"]
             return 0
-        elif "show" in argv:
-            print "command : sdm show"
+        elif "show_mounts" in argv:
+            print "command : sdm show_mounts"
             print ""
-            print COMMANDS_DESCS["show"]
+            print COMMANDS_DESCS["show_mounts"]
             return 0
         elif "mount" in argv:
             print "command : sdm mount <dataset_name> [<mount_path>]"
@@ -223,8 +223,8 @@ def show_help(argv=None):
 
 
 COMMANDS = {
-    "list": list_datasets,
-    "show": show_mounts,
+    "list_datasets": list_datasets,
+    "show_mounts": show_mounts,
     "mount": mount_dataset,
     "unmount": unmount_dataset,
     "help": show_help,
