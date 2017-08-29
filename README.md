@@ -26,7 +26,7 @@ $ sdm list_datasets
 
 To mount a dataset:
 ```
-sdm mount <dataset> [<mount_dir>]
+sdm mount <dataset> [<mount_path>]
 ```
 
 e.g.
@@ -65,11 +65,19 @@ $ sdm show_mounts
 
 To unmount:
 ```
-sdm unmount <dataset OR mount_dir OR mount_id> 
+sdm unmount <dataset OR mount_path OR mount_id> [<cleanup flag>]
 ```
+
+`cleanup flag` is `boolean`. If `cleanup flag` is set `true`, `SDM` does not 
+leave mount states including all configuration files and local caches.
 
 e.g.
 ```
-$ sdm unmount 1b99
+$ sdm unmount 1b99 false
 Successfully unmounted syndicatefs, /home/iychoi/ivirus
+```
+
+To clean up `UNMOUNTED` mounts:
+```
+sdm clean
 ```
