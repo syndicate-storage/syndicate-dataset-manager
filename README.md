@@ -8,20 +8,21 @@ Usage
 
 To list available datasets:
 ```
-sdm list_datasets
+sdm ls
 ```
 
 e.g.
 ```
-$ sdm list_datasets
-+----------+------------------------------------------------------------+
-| DATASET  |                        DESCRIPTION                         |
-+----------+------------------------------------------------------------+
-| imicrobe |    iMicrobe - Metagenomic samples for microbial ecology    |
-|  ivirus  |       iVirus - Metagenomic samples for viral ecology       |
-|  uhslc   | University of Hawaii Sea Level Center - Ocean Tide Dataset |
-|  refseq  |       NCBI-REFSEQ - NCBI Reference Sequence Database       |
-+----------+------------------------------------------------------------+
+$ sdm ls
++------------+------------------------------------------------------------+
+|  DATASET   |                        DESCRIPTION                         |
++------------+------------------------------------------------------------+
+| nanograv9y |            NANOGrav - Gravitational waves data             |
+|  imicrobe  |    iMicrobe - Metagenomic samples for microbial ecology    |
+|   ivirus   |       iVirus - Metagenomic samples for viral ecology       |
+|   uhslc    | University of Hawaii Sea Level Center - Ocean Tide Dataset |
+|   refseq   |       NCBI-REFSEQ - NCBI Reference Sequence Database       |
++------------+------------------------------------------------------------+
 ```
 
 To mount a dataset:
@@ -48,14 +49,14 @@ data                            Malspina_viral_proteins  VirSorter_curated_datas
 DNA_Viromes_library_comparison  TOV_43_viromes
 ```
 
-To list mounts:
+To list mount status:
 ```
-sdm show_mounts
+sdm ps
 ```
 
 e.g.
 ```
-$ sdm show_mounts
+$ sdm ps
 +--------------+---------+---------------------+---------+
 |   MOUNT_ID   | DATASET |      MOUNT_PATH     |  STATUS |
 +--------------+---------+---------------------+---------+
