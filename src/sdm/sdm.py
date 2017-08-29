@@ -40,16 +40,17 @@ COMMANDS_TABLE = {}
 
 
 def _fill_commands_table():
-    COMMANDS.append(("list_datasets", list_datasets, "list available datasets"))
-    COMMANDS.append(("show_mounts", show_mounts, "show mounts"))
-    COMMANDS.append(("mount", mount_dataset, "mount a dataset"))
-    COMMANDS.append(("unmount", unmount_dataset, "unmount a dataset"))
-    COMMANDS.append(("clean", clean_mounts, "clear broken mounts"))
-    COMMANDS.append(("help", show_help, "show help"))
+    COMMANDS.append((["list_datasets", "ls", "list"], list_datasets, "list available datasets"))
+    COMMANDS.append((["show_mounts", "ps", "status"], show_mounts, "show mount status"))
+    COMMANDS.append((["mount", "mnt"], mount_dataset, "mount a dataset"))
+    COMMANDS.append((["unmount", "umount", "umnt"], unmount_dataset, "unmount a dataset"))
+    COMMANDS.append((["clean"], clean_mounts, "clear broken mounts"))
+    COMMANDS.append((["help", "h"], show_help, "show help"))
 
     for cmd in COMMANDS:
-        k, _, _ = cmd
-        COMMANDS_TABLE[k] = cmd
+        karr, _, _ = cmd
+        for k in karr:
+            COMMANDS_TABLE[k] = cmd
 
 
 def list_datasets(argv):
@@ -278,33 +279,38 @@ def clean_mounts(argv):
 def show_help(argv=None):
     if argv:
         if "list_datasets" in argv:
-            print "command : sdm list_datasets"
+            karr, _, desc = COMMANDS_TABLE["list_datasets"]
+            print "command : %s" % (" | ".join(karr))
+            print "usage : sdm ls"
             print ""
-            _, _, desc = COMMANDS_TABLE["list_datasets"]
             print desc
             return 0
         elif "show_mounts" in argv:
-            print "command : sdm show_mounts"
+            karr, _, desc = COMMANDS_TABLE["show_mounts"]
+            print "command : %s" % (" | ".join(karr))
+            print "usage : sdm ps"
             print ""
-            _, _, desc = COMMANDS_TABLE["show_mounts"]
             print desc
             return 0
         elif "mount" in argv:
-            print "command : sdm mount <dataset_name> [<mount_path>]"
+            karr, _, desc = COMMANDS_TABLE["mount"]
+            print "command : %s" % (" | ".join(karr))
+            print "usage : sdm mount <dataset_name> [<mount_path>]"
             print ""
-            _, _, desc = COMMANDS_TABLE["mount"]
             print desc
             return 0
         elif "unmount" in argv:
-            print "command : sdm unmount <mount_id> [<cleanup_flag>]"
+            karr, _, desc = COMMANDS_TABLE["unmount"]
+            print "command : %s" % (" | ".join(karr))
+            print "usage : sdm unmount <mount_id> [<cleanup_flag>]"
             print ""
-            _, _, desc = COMMANDS_TABLE["unmount"]
             print desc
             return 0
         elif "clean" in argv:
-            print "command : sdm clean"
+            karr, _, desc = COMMANDS_TABLE["clean"]
+            print "command : %s" % (" | ".join(karr))
+            print "usage : sdm clean"
             print ""
-            _, _, desc = COMMANDS_TABLE["clean"]
             print desc
             return 0
         else:
@@ -319,7 +325,8 @@ def show_help(argv=None):
         tbl.field_names = ["COMMAND", "DESCRIPTION"]
         for cmd in COMMANDS:
             command, _, desc = cmd
-            tbl.add_row([command, desc])
+            command_str = " | ".join(command)
+            tbl.add_row([command_str, desc])
 
         print tbl
         print ""
