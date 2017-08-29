@@ -104,23 +104,30 @@ class SyndicatefsMount(object):
         return confing_path
 
     def _make_syndicate_configuration_root_path(self, mount_id):
-        confing_root_path = "%s/%s" % (
+        config_root_path = "%s/%s" % (
             SYNDICATE_CONFIG_ROOT_PATH.rstrip("/"),
             mount_id.strip().lower()
         )
-        abs_config_root_path = os.path.abspath(expanduser(confing_root_path.strip()))
+        abs_config_root_path = os.path.abspath(expanduser(config_root_path.strip()))
         return abs_config_root_path
 
-    def _make_syndicate_command(self, mount_id):
+    def _make_syndicate_command(self, mount_id, debug_mode=False):
         conf_path = self._make_syndicate_configuration_path(mount_id)
-        return "syndicate -d -c %s" % conf_path
+        debug_flag = ""
+        if debug_mode:
+            debug_flag = "-d"
+        return "syndicate %s -c %s" % (debug_flag, conf_path)
 
-    def _make_syndicatefs_command(self, mount_id):
+    def _make_syndicatefs_command(self, mount_id, debug_mode=False, debug_level=1):
         conf_path = self._make_syndicate_configuration_path(mount_id)
-        return "syndicatefs -d3 -c %s" % conf_path
+        debug_flag = ""
+        if debug_mode:
+            debug_flag = "-d%d" % debug_level
+        return "syndicatefs %s -c %s" % (debug_flag, conf_path)
 
-    def _run_command_with_output(self, command):
+    def _run_command_foreground(self, command):
         try:
+            # print "Running an external process - %s:" % command
             proc = subprocess.Popen(
                 shlex.split(command),
                 stderr=subprocess.STDOUT,
@@ -128,70 +135,72 @@ class SyndicatefsMount(object):
             )
 
             stdout_value = proc.communicate()[0]
-            print "Running an external process - %s:" % command
-            print "> message: %s" % repr(stdout_value)
+            message = repr(stdout_value)
             rc = proc.poll()
-            print "> exitcode: %d" % rc
-
             if rc != 0:
                 raise SyndicatefsMountException(
-                    "Failed to run an external process - %d" % rc
+                    "Failed to run an external process - %d : %s" % (rc, message)
                 )
         except subprocess.CalledProcessError as err:
             raise SyndicatefsMountException(
                 "> error code: %d, %s" % (err.returncode, err.output)
             )
 
-    def _run_command(self, command):
+    def _run_command_background(self, command, log_path):
         try:
+            # print "Running an external process in background - %s:" % command
+            fd = open(log_path, "w")
+            fileno = fd.fileno()
             proc = subprocess.Popen(
                 command,
                 stderr=subprocess.STDOUT,
-                stdout=subprocess.PIPE,
+                stdout=fileno,
                 shell=True
             )
 
-            stdout_value = proc.communicate()[0]
-            print "Running an external process - %s:" % command
-            print "> message: %s" % repr(stdout_value)
-            rc = proc.poll()
-            print "> exitcode: %d" % rc
-
-            if rc != 0:
-                raise SyndicatefsMountException(
-                    "Failed to run an external process - %d" % rc
-                )
         except subprocess.CalledProcessError as err:
             raise SyndicatefsMountException(
                 "> error code: %d, %s" % (err.returncode, err.output)
             )
 
-    def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host):
+    def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, debug_mode=False, force=False):
         print "Registering a syndicate user, %s" % username
 
-        confing_root_path = self._make_syndicate_configuration_root_path(mount_id)
-        if not os.path.exists(confing_root_path):
-            os.makedirs(confing_root_path, 0755)
+        config_root_path = self._make_syndicate_configuration_root_path(mount_id)
+        if not os.path.exists(config_root_path):
+            os.makedirs(config_root_path, 0755)
 
-        syndicate_command = self._make_syndicate_command(mount_id)
+        config_path = self._make_syndicate_configuration_path(mount_id)
+        skip_config = False
+        if os.path.exists(config_path):
+            # skip
+            skip_config = True
 
-        user_pkey_fd, user_pkey_path = tempfile.mkstemp()
-        f = os.fdopen(user_pkey_fd, "w")
-        f.write(user_pkey)
-        f.close()
+        if force:
+            skip_config = False
+            if os.path.exists(config_path):
+                shutil.rmtree(config_root_path)
 
-        command_register = "%s --trust_public_key setup %s %s %s" % (
-            syndicate_command,
-            username.strip(),
-            user_pkey_path,
-            ms_host.strip()
-        )
-        
-        try:
-            self._run_command_with_output(command_register)
-            print "Successfully registered a syndicate user, %s" % username
-        finally:
-            os.remove(user_pkey_path)
+        syndicate_command = self._make_syndicate_command(mount_id, debug_mode)
+
+        if not skip_config:
+            user_pkey_fd, user_pkey_path = tempfile.mkstemp()
+            f = os.fdopen(user_pkey_fd, "w")
+            f.write(user_pkey)
+            f.close()
+
+            command_register = "%s --trust_public_key setup %s %s %s" % (
+                syndicate_command,
+                username.strip(),
+                user_pkey_path,
+                ms_host.strip()
+            )
+
+            try:
+                self._run_command_foreground(command_register)
+                print "Successfully registered a syndicate user, %s" % username
+            finally:
+                os.remove(user_pkey_path)
 
         command_reload_user_cert = "%s reload_user_cert %s" % (
             syndicate_command,
@@ -206,45 +215,52 @@ class SyndicatefsMount(object):
             gateway_name.strip().lower()
         )
 
-        self._run_command_with_output(command_reload_user_cert)
+        self._run_command_foreground(command_reload_user_cert)
         print "Successfully reloaded a user cert, %s" % username
-        self._run_command_with_output(command_reload_volume_cert)
+        self._run_command_foreground(command_reload_volume_cert)
         print "Successfully reloaded a volume cert, %s" % dataset
-        self._run_command_with_output(command_reload_gatway_cert)
+        self._run_command_foreground(command_reload_gatway_cert)
         print "Successfully reloaded a gateway cert, %s" % gateway_name
 
-    def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path):
+    def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path, debug_mode=False, debug_level=1):
         print "Mounting syndicatefs, %s to %s" % (dataset, mount_path)
 
         abs_mount_path = os.path.abspath(expanduser(mount_path.strip()))
         if not os.path.exists(abs_mount_path):
             os.makedirs(abs_mount_path, 0755)
 
-        confing_root_path = self._make_syndicate_configuration_root_path(mount_id)
-        syndicatefs_log_path = "%s/mount.log" % confing_root_path
-        syndicatefs_command = self._make_syndicatefs_command(mount_id)
+        config_root_path = self._make_syndicate_configuration_root_path(mount_id)
+        syndicatefs_log_path = "%s/mount.log" % config_root_path
+        syndicatefs_command = self._make_syndicatefs_command(mount_id, debug_mode, debug_level)
 
         #${SYNDICATEFS_CMD} -f -u ANONYMOUS -v ${VOLUME_NAME} -g ${UG_NAME} ${SYNDICATEFS_DATASET_MOUNT_DIR} &> /tmp/syndicate_${VOLUME_NAME}.log&
-        command_mount = "%s -f -u ANONYMOUS -v %s -g %s %s &> %s" % (
+        command_mount = "%s -f -u ANONYMOUS -v %s -g %s %s" % (
             syndicatefs_command,
             dataset.strip().lower(),
             gateway_name.strip().lower(),
-            mount_path.strip(),
-            syndicatefs_log_path
+            mount_path.strip()
         )
 
-        self._run_command(command_mount)
+        self._run_command_background(command_mount, syndicatefs_log_path)
         self._wait_mount(mount_path.strip())
         print "Successfully mounted syndicatefs, %s to %s" % (dataset, mount_path)
 
-    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path):
-        self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host)
-        self._mount_syndicatefs(mount_id, dataset, gateway_name, mount_path)
+    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, debug_mode=False, debug_level=1, force=False):
+        self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host, debug_mode, force)
+        self._mount_syndicatefs(mount_id, dataset, gateway_name, mount_path, debug_mode, debug_level)
 
     def unmount(self, mount_id, mount_path):
-        command_unmount = "fusermount -u %s" % mount_path
-        self._run_command_with_output(command_unmount)
+        try:
+            command_unmount = "fusermount -u %s" % mount_path
+            self._run_command_foreground(command_unmount)
+        except SyndicatefsMountException, e:
+            if "not found" in str(e):
+                # it's already unmounted - skip
+                pass
+            else:
+                raise e
 
-        confing_root_path = self._make_syndicate_configuration_root_path(mount_id)
-        shutil.rmtree(confing_root_path)
+        # clean up
+        config_root_path = self._make_syndicate_configuration_root_path(mount_id)
+        shutil.rmtree(config_root_path)
         print "Successfully unmounted syndicatefs, %s" % (mount_path)

@@ -25,6 +25,8 @@ CONFIG_PATH = "~/.sdm/sdm.conf"
 
 DEFAULT_REPO_URL = "https://butler.opencloud.cs.arizona.edu/sdm/catalogue"
 DEFAULT_MOUNT_PATH = "~/sdm_mounts/"
+DEFAULT_SYNDICATE_DEBUG_MODE = True
+DEFAULT_SYNDICATE_DEBUG_LEVEL = 3
 
 
 class Config(object):
@@ -34,6 +36,8 @@ class Config(object):
     def __init__(self, path=CONFIG_PATH):
         self.repo_url = DEFAULT_REPO_URL
         self.default_mount_path = DEFAULT_MOUNT_PATH
+        self.syndicate_debug_mode = DEFAULT_SYNDICATE_DEBUG_MODE
+        self.syndicate_debug_level = DEFAULT_SYNDICATE_DEBUG_LEVEL
         try:
             self.load_config(path)
         except IOError:
@@ -42,7 +46,10 @@ class Config(object):
     def _save(self):
         return {
             "REPO_URL": self.repo_url,
-            "DEFAULT_MOUNT_PATH": self.default_mount_path
+            "DEFAULT_MOUNT_PATH": self.default_mount_path,
+            "SYNDICATE_DEBUG_MODE": self.syndicate_debug_mode,
+            "SYNDICATE_DEBUG_LEVEL": self.syndicate_debug_level,
+            "SYNDICATE_DEBUG_MODE": self.syndicate_debug_mode
         }
 
     def _load(self, conf):
@@ -52,6 +59,12 @@ class Config(object):
                 self.repo_url = conf[k].strip()
             elif kl == "default_mount_path":
                 self.default_mount_path = conf[k].strip()
+            elif kl == "syndicate_debug_mode":
+                self.syndicate_debug_mode = bool(conf[k])
+            elif kl == "syndicate_debug_level":
+                self.syndicate_debug_level = int(conf[k])
+            elif kl == "syndicate_debug_mode":
+                self.syndicate_debug_mode = bool(conf[k])
 
     def load_config(self, path=CONFIG_PATH):
         abs_path = os.path.abspath(expanduser(path).strip())
@@ -82,3 +95,15 @@ class Config(object):
 
     def set_default_mount_path(self, default_mount_path):
         self.default_mount_path = default_mount_path
+
+    def get_syndicate_debug_mode(self):
+        return self.syndicate_debug_mode
+
+    def set_syndicate_debug_mode(self, syndicate_debug_mode):
+        self.syndicate_debug_mode = syndicate_debug_mode
+
+    def get_syndicate_debug_level(self):
+        return self.syndicate_debug_level
+
+    def set_syndicate_debug_level(self, syndicate_debug_level):
+        self.syndicate_debug_level = syndicate_debug_level

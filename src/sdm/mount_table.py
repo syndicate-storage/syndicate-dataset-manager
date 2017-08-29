@@ -32,7 +32,7 @@ class MountRecord(object):
     """
     mount table record
     """
-    def __init__(self, record_id="", dataset="", mount_path=""):
+    def __init__(self, record_id="", dataset="", mount_path="", status="unmounted"):
         self.dataset = dataset.strip().lower()
         self.mount_path = os.path.abspath(expanduser(mount_path.strip()))
 
@@ -41,6 +41,8 @@ class MountRecord(object):
         else:
             self.record_id = self._make_record_id(self.dataset, mount_path)
 
+        self.status = status.lower()
+
     def _make_record_id(self, dataset, mount_path):
         seed = "seed123%sMountRecord%s" % (dataset, mount_path)
         return hashlib.sha256(seed).hexdigest().lower()
@@ -48,16 +50,17 @@ class MountRecord(object):
     @classmethod
     def from_line(cls, line):
         fields = line.split("\t")
-        if len(fields) == 3:
+        if len(fields) == 4:
             record_id = fields[0]
             dataset = fields[1]
             mount_path = fields[2]
-            return MountRecord(record_id, dataset, mount_path)
+            status = fields[3]
+            return MountRecord(record_id, dataset, mount_path, status)
         else:
             raise MountTableException("unrecognized format - %s" % line)
 
     def to_line(self):
-        return "%s\t%s\t%s" % (self.record_id, self.dataset, self.mount_path)
+        return "%s\t%s\t%s\t%s" % (self.record_id, self.dataset, self.mount_path, self.status)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -131,8 +134,15 @@ class MountTable(object):
                 records.append(record)
         return records
 
-    def add_record(self, dataset, mount_path):
-        record = MountRecord(dataset=dataset, mount_path=mount_path)
+    def get_records_by_status(self, status):
+        records = []
+        for record in self.table:
+            if record.status == status.strip().lower():
+                records.append(record)
+        return records
+
+    def add_record(self, dataset, mount_path, status):
+        record = MountRecord(dataset=dataset, mount_path=mount_path, status=status)
         exist = False
 
         for r in self.table:
