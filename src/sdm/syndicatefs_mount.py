@@ -66,25 +66,28 @@ class SyndicatefsMount(object):
                         matching_mounts.append(w)
         return matching_mounts
 
-    def _wait_mount(self, mount_path, timeout=30):
+    def _wait_mount(self, mount_path, timeout=30, retry=0):
         tick = 0
+        trial = 0
         while True:
             # check processes
             matching_processes = self._get_processes(SYNDICATEFS_PROCESS_NAME)
             if len(matching_processes) == 0:
-                raise SyndicatefsMountException(
-                    "cannot find matching process - %s" %
-                    SYNDICATEFS_PROCESS_NAME
+                trial += 1
+                if trial > retry:
+                    raise SyndicatefsMountException(
+                        "cannot find matching process - %s" %
+                        SYNDICATEFS_PROCESS_NAME
+                    )
+            else:
+                # check mount
+                matching_mounts = self._get_fuse_mounts(
+                    SYNDICATEFS_PROCESS_NAME,
+                    mount_path
                 )
-
-            # check mount
-            matching_mounts = self._get_fuse_mounts(
-                SYNDICATEFS_PROCESS_NAME,
-                mount_path
-            )
-            if len(matching_mounts) != 0:
-                # success
-                return
+                if len(matching_mounts) != 0:
+                    # success
+                    return
 
             time.sleep(1)
             tick += 1
@@ -239,7 +242,7 @@ class SyndicatefsMount(object):
         )
 
         self._run_command_background(command_mount, syndicatefs_log_path)
-        self._wait_mount(abs_mount_path)
+        self._wait_mount(abs_mount_path, retry=3)
         print "Successfully mounted syndicatefs, %s to %s" % (dataset, abs_mount_path)
 
     def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, debug_mode=False, debug_level=1, force=False):
