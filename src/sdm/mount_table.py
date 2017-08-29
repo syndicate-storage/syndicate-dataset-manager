@@ -49,12 +49,12 @@ class MountRecord(object):
 
     @classmethod
     def from_line(cls, line):
-        fields = line.split("\t")
+        fields = line.strip().split("\t")
         if len(fields) == 4:
-            record_id = fields[0]
-            dataset = fields[1]
-            mount_path = fields[2]
-            status = fields[3]
+            record_id = fields[0].strip()
+            dataset = fields[1].strip()
+            mount_path = fields[2].strip()
+            status = fields[3].strip()
             return MountRecord(record_id, dataset, mount_path, status)
         else:
             raise MountTableException("unrecognized format - %s" % line)

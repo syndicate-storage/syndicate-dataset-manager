@@ -86,11 +86,26 @@ def show_mounts(argv):
         tbl = PrettyTable()
         tbl.field_names = ["MOUNT_ID", "DATASET", "MOUNT_PATH", "STATUS"]
 
+        need_sync = False
         for rec in records:
+            # detect out-of-sync record
+            is_mounted = syndicatefs.check_mount(rec.mount_path)
+            is_status_mounted = rec.status.lower() == "mounted"
+
+            if is_mounted != is_status_mounted:
+                if is_mounted:
+                    rec.status = "mounted"
+                else:
+                    rec.status = "unmounted"
+                need_sync = True
+
             cnt += 1
             tbl.add_row([rec.record_id[:12], rec.dataset, rec.mount_path, rec.status.upper()])
 
         print tbl
+
+        if need_sync:
+            mount_table.save_table()
 
         if cnt == 0:
             print "No mounts"

@@ -67,8 +67,6 @@ class SyndicatefsMount(object):
         return matching_mounts
 
     def _wait_mount(self, mount_path, timeout=30):
-        abs_mount_path = os.path.abspath(expanduser(mount_path))
-
         tick = 0
         while True:
             # check processes
@@ -82,7 +80,7 @@ class SyndicatefsMount(object):
             # check mount
             matching_mounts = self._get_fuse_mounts(
                 SYNDICATEFS_PROCESS_NAME,
-                abs_mount_path
+                mount_path
             )
             if len(matching_mounts) != 0:
                 # success
@@ -238,16 +236,24 @@ class SyndicatefsMount(object):
             syndicatefs_command,
             dataset.strip().lower(),
             gateway_name.strip().lower(),
-            mount_path.strip()
+            abs_mount_path.strip()
         )
 
         self._run_command_background(command_mount, syndicatefs_log_path)
-        self._wait_mount(mount_path.strip())
-        print "Successfully mounted syndicatefs, %s to %s" % (dataset, mount_path)
+        self._wait_mount(abs_mount_path)
+        print "Successfully mounted syndicatefs, %s to %s" % (dataset, abs_mount_path)
 
     def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, debug_mode=False, debug_level=1, force=False):
         self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host, debug_mode, force)
         self._mount_syndicatefs(mount_id, dataset, gateway_name, mount_path, debug_mode, debug_level)
+
+    def check_mount(self, mount_path):
+        abs_mount_path = os.path.abspath(expanduser(mount_path.strip()))
+        try:
+            self._wait_mount(abs_mount_path)
+            return True
+        except SyndicatefsMountException, e:
+            return False
 
     def unmount(self, mount_id, mount_path):
         try:
