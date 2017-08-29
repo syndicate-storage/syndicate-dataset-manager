@@ -44,6 +44,7 @@ def _fill_commands_table():
     COMMANDS.append(("show_mounts", show_mounts, "show mounts"))
     COMMANDS.append(("mount", mount_dataset, "mount a dataset"))
     COMMANDS.append(("unmount", unmount_dataset, "unmount a dataset"))
+    COMMANDS.append(("clean", clean_mounts, "clear broken mounts"))
     COMMANDS.append(("help", show_help, "show help"))
 
     for cmd in COMMANDS:
@@ -90,17 +91,17 @@ def show_mounts(argv):
         for rec in records:
             # detect out-of-sync record
             is_mounted = syndicatefs.check_mount(rec.mount_path)
-            is_status_mounted = rec.status.lower() == "mounted"
+            is_status_mounted = rec.status == sdm_mount_table.MountRecordStatus.MOUNTED
 
             if is_mounted != is_status_mounted:
                 if is_mounted:
-                    rec.status = "mounted"
+                    rec.status = sdm_mount_table.MountRecordStatus.MOUNTED
                 else:
-                    rec.status = "unmounted"
+                    rec.status = sdm_mount_table.MountRecordStatus.UNMOUNTED
                 need_sync = True
 
             cnt += 1
-            tbl.add_row([rec.record_id[:12], rec.dataset, rec.mount_path, rec.status.upper()])
+            tbl.add_row([rec.record_id[:12], rec.dataset, rec.mount_path, rec.status])
 
         print tbl
 
@@ -121,7 +122,15 @@ def process_mount_dataset(dataset, mount_path):
     entry = repository.get_entry(dataset)
     if entry:
         try:
-            mount_record = mount_table.add_record(dataset, mount_path, status="unmounted")
+            # check existance
+            records = mount_table.get_records_by_mount_path(mount_path)
+            for rec in records:
+                if rec.dataset == dataset and rec.status == sdm_mount_table.MountRecordStatus.UNMOUNTED:
+                    # same dataset but unmounted
+                    # delete and overwrite
+                    mount_table.delete_record(rec.record_id)
+
+            mount_record = mount_table.add_record(dataset, mount_path, status=sdm_mount_table.MountRecordStatus.UNMOUNTED)
             mount_table.save_table()
 
             syndicatefs.mount(
@@ -135,7 +144,7 @@ def process_mount_dataset(dataset, mount_path):
                 debug_mode=config.get_syndicate_debug_mode(),
                 debug_level=config.get_syndicate_debug_level(),
             )
-            mount_record.status = "mounted"
+            mount_record.status = sdm_mount_table.MountRecordStatus.MOUNTED
             mount_table.save_table()
             return 0
         except sdm_mount_table.MountTableException, e:
@@ -174,13 +183,21 @@ def mount_dataset(argv):
         return 1
 
 
-def process_unmount_dataset(record_id):
+def process_unmount_dataset(record_id, cleanup=False):
     try:
         records = mount_table.get_records_by_record_id(record_id)
         if len(records) == 1:
             record = records[0]
-            syndicatefs.unmount(record.record_id, record.mount_path)
-            mount_table.delete_record(record.record_id)
+            if not cleanup and record.status == sdm_mount_table.MountRecordStatus.UNMOUNTED:
+                print "Dataset is already unmounted"
+                return 1
+
+            record.status = sdm_mount_table.MountRecordStatus.UNMOUNTED
+
+            syndicatefs.unmount(record.record_id, record.mount_path, cleanup)
+            if cleanup:
+                mount_table.delete_record(record.record_id)
+
             mount_table.save_table()
             return 0
         else:
@@ -200,11 +217,15 @@ def unmount_dataset(argv):
     # args
     # 1. dataset name OR mount_path
     if len(argv) >= 1:
+        cleanup = False
+        if len(argv) >= 2:
+            cleanup = bool(argv[1])
+
         if len(mount_table.get_records_by_dataset(argv[0])) > 0:
             # dataset
             records = mount_table.get_records_by_dataset(argv[0])
             if len(records) == 1:
-                return process_unmount_dataset(records[0].record_id)
+                return process_unmount_dataset(records[0].record_id, cleanup)
             else:
                 print "Cannot unmount dataset. There are more %d mounts" % len(records)
                 return 1
@@ -212,7 +233,7 @@ def unmount_dataset(argv):
             # maybe path?
             records = mount_table.get_records_by_mount_path(argv[0])
             if len(records) == 1:
-                return process_unmount_dataset(records[0].record_id)
+                return process_unmount_dataset(records[0].record_id, cleanup)
             else:
                 print "Cannot unmount dataset. There are more %d mounts" % len(records)
                 return 1
@@ -220,7 +241,7 @@ def unmount_dataset(argv):
             # maybe record_id?
             records = mount_table.get_records_by_record_id(argv[0])
             if len(records) == 1:
-                return process_unmount_dataset(records[0].record_id)
+                return process_unmount_dataset(records[0].record_id, cleanup)
             else:
                 print "Cannot unmount dataset. There are more %d mounts" % len(records)
                 return 1
@@ -231,6 +252,13 @@ def unmount_dataset(argv):
         show_help(["unmount"])
         return 1
 
+
+def clean_mounts(argv):
+    records = mount_table.list_records()
+    for rec in records:
+        if rec.status == sdm_mount_table.MountRecordStatus.UNMOUNTED:
+            process_unmount_dataset(rec.record_id, True)
+    return 0
 
 def show_help(argv=None):
     if argv:
@@ -253,9 +281,15 @@ def show_help(argv=None):
             print desc
             return 0
         elif "unmount" in argv:
-            print "command : sdm unmount <mount_id>"
+            print "command : sdm unmount <mount_id> [<cleanup_flag>]"
             print ""
             _, _, desc = COMMANDS_TABLE["unmount"]
+            print desc
+            return 0
+        elif "clean" in argv:
+            print "command : sdm clean"
+            print ""
+            _, _, desc = COMMANDS_TABLE["clean"]
             print desc
             return 0
         else:

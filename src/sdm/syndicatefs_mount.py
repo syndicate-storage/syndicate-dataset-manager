@@ -162,8 +162,6 @@ class SyndicatefsMount(object):
             )
 
     def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, debug_mode=False, force=False):
-        print "Registering a syndicate user, %s" % username
-
         config_root_path = self._make_syndicate_configuration_root_path(mount_id)
         if not os.path.exists(config_root_path):
             os.makedirs(config_root_path, 0755)
@@ -182,6 +180,7 @@ class SyndicatefsMount(object):
         syndicate_command = self._make_syndicate_command(mount_id, debug_mode)
 
         if not skip_config:
+            print "Registering a syndicate user, %s" % username
             user_pkey_fd, user_pkey_path = tempfile.mkstemp()
             f = os.fdopen(user_pkey_fd, "w")
             f.write(user_pkey)
@@ -255,7 +254,7 @@ class SyndicatefsMount(object):
         except SyndicatefsMountException, e:
             return False
 
-    def unmount(self, mount_id, mount_path):
+    def unmount(self, mount_id, mount_path, cleanup=False):
         try:
             command_unmount = "fusermount -u %s" % mount_path
             self._run_command_foreground(command_unmount)
@@ -266,7 +265,8 @@ class SyndicatefsMount(object):
             else:
                 raise e
 
-        # clean up
-        config_root_path = self._make_syndicate_configuration_root_path(mount_id)
-        shutil.rmtree(config_root_path)
+        if cleanup:
+            # clean up
+            config_root_path = self._make_syndicate_configuration_root_path(mount_id)
+            shutil.rmtree(config_root_path)
         print "Successfully unmounted syndicatefs, %s" % (mount_path)

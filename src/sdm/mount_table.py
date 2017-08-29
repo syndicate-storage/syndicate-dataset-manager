@@ -28,11 +28,16 @@ class MountTableException(Exception):
     pass
 
 
+class MountRecordStatus(object):
+    UNMOUNTED = "UNMOUNTED"
+    MOUNTED = "MOUNTED"
+
+
 class MountRecord(object):
     """
     mount table record
     """
-    def __init__(self, record_id="", dataset="", mount_path="", status="unmounted"):
+    def __init__(self, record_id="", dataset="", mount_path="", status=MountRecordStatus.UNMOUNTED):
         self.dataset = dataset.strip().lower()
         self.mount_path = os.path.abspath(expanduser(mount_path.strip()))
 
@@ -41,7 +46,10 @@ class MountRecord(object):
         else:
             self.record_id = self._make_record_id(self.dataset, mount_path)
 
-        self.status = status.lower()
+        if status.strip().upper() == MountRecordStatus.MOUNTED:
+            self.status = MountRecordStatus.MOUNTED
+        else:
+            self.status = MountRecordStatus.UNMOUNTED
 
     def _make_record_id(self, dataset, mount_path):
         seed = "seed123%sMountRecord%s" % (dataset, mount_path)
@@ -137,7 +145,7 @@ class MountTable(object):
     def get_records_by_status(self, status):
         records = []
         for record in self.table:
-            if record.status == status.strip().lower():
+            if record.status == status:
                 records.append(record)
         return records
 
@@ -147,6 +155,10 @@ class MountTable(object):
 
         for r in self.table:
             if r.record_id == record.record_id:
+                exist = True
+                break
+
+            if r.mount_path == record.mount_path:
                 exist = True
                 break
 
