@@ -1,0 +1,12 @@
+Format: http://dep.debian.net/deps/dep5
+Upstream-Name: syndicate-dataset-manager
+Upstream-Contact: Illyoung Choi <iychoi@email.arizona.edu>
+Source: https://github.com/syndicate-storage/syndicate-dataset-manager
+
+Files:*
+License: Apache-2.0
+Copyright: 2017 Illyoung Choi <iychoi@email.arizona.edu> et al.
+
+License: Apache-2.0
+ Found in `/usr/share/common-licenses/Apache-2.0`
+
