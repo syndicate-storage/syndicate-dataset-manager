@@ -18,11 +18,11 @@
 import os
 import os.path
 import sys
+import traceback
 import config as sdm_config
 import mount_table as sdm_mount_table
 import repository as sdm_repository
 import syndicatefs_mount as sdm_syndicatefs_mount
-import traceback
 
 from os.path import expanduser
 from prettytable import PrettyTable
@@ -290,7 +290,10 @@ def run(command, argv):
         raise ValueError("Unrecognized command: %s" % (command))
 
 
-def main(argv):
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+
     _fill_commands_table()
 
     if len(argv) >= 1:
@@ -306,6 +309,5 @@ def main(argv):
     else:
         show_help()
 
-
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

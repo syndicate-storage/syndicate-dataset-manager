@@ -39,6 +39,11 @@ setup(
     package_dir={
         'sdm': 'src/sdm'
     },
+    entry_points={
+        'console_scripts': [
+            'sdm = sdm.sdm:main'
+        ]
+    },
     install_requires=dependencies,
     zip_safe=False
 )
