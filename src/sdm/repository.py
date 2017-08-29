@@ -39,24 +39,24 @@ class RepositoryEntry(object):
     @classmethod
     def from_json(cls, jsonstr):
         ent = json.loads(jsonstr)
-        return RepositoryEntry(
-            ent["dataset"],
-            ent["ms_host"],
-            ent["volume"],
-            ent["username"],
-            ent["user_pkey"],
-            ent["gateway"],
-            ent["description"]
-        )
+        return cls.from_dict(ent)
 
     @classmethod
     def from_dict(cls, ent):
+        username = ""
+        user_pkey = ""
+        if "username" in ent:
+            username = ent["username"]
+
+        if "user_pkey" in ent:
+            user_pkey = ent["user_pkey"]
+
         return RepositoryEntry(
             ent["dataset"],
             ent["ms_host"],
             ent["volume"],
-            ent["username"],
-            ent["user_pkey"],
+            username,
+            user_pkey,
             ent["gateway"],
             ent["description"]
         )

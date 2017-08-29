@@ -121,6 +121,21 @@ def show_mounts(argv):
 def process_mount_dataset(dataset, mount_path):
     entry = repository.get_entry(dataset)
     if entry:
+
+        username = entry.username
+        user_pkey = entry.user_pkey
+        if username.strip() == "" or user_pkey.strip() == "":
+            # use local settings
+            syndicate_users = config.list_syndicate_users_by_ms_host(entry.ms_host)
+            for suser in syndicate_users:
+                username = suser.username
+                user_pkey = suser.user_pkey
+                break
+
+        if username.strip() == "" or user_pkey.strip() == "":
+            print "Cannot find user accounts to access the dataset - %s" % (dataset)
+            return 1
+
         try:
             # check existance
             records = mount_table.get_records_by_mount_path(mount_path)
@@ -137,8 +152,8 @@ def process_mount_dataset(dataset, mount_path):
                 mount_record.record_id,
                 entry.ms_host,
                 entry.dataset,
-                entry.username,
-                entry.user_pkey,
+                username,
+                user_pkey,
                 entry.gateway,
                 mount_path,
                 debug_mode=config.get_syndicate_debug_mode(),
