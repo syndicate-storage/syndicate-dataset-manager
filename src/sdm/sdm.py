@@ -22,6 +22,7 @@ import traceback
 import config as sdm_config
 import mount_table as sdm_mount_table
 import repository as sdm_repository
+import backends as sdm_backends
 import syndicatefs_mount as sdm_syndicatefs_mount
 
 from os.path import expanduser
@@ -30,7 +31,7 @@ from prettytable import PrettyTable
 
 config = sdm_config.Config()
 mount_table = sdm_mount_table.MountTable()
-repository = sdm_repository.Repository(config.get_repo_url())
+repository = sdm_repository.Repository(config.repo_url)
 syndicatefs = sdm_syndicatefs_mount.SyndicatefsMount()
 
 
@@ -88,7 +89,7 @@ def show_mounts(argv):
         records = mount_table.list_records()
         cnt = 0
         tbl = PrettyTable()
-        tbl.field_names = ["MOUNT_ID", "DATASET", "MOUNT_PATH", "STATUS"]
+        tbl.field_names = ["MOUNT_ID", "DATASET", "MOUNT_PATH", "BACKEND", "STATUS"]
 
         need_sync = False
         for rec in records:
@@ -104,7 +105,7 @@ def show_mounts(argv):
                 need_sync = True
 
             cnt += 1
-            tbl.add_row([rec.record_id[:12], rec.dataset, rec.mount_path, rec.status])
+            tbl.add_row([rec.record_id[:12], rec.dataset, rec.mount_path, rec.backend, rec.status])
 
         print tbl
 
@@ -148,7 +149,7 @@ def process_mount_dataset(dataset, mount_path):
                     # delete and overwrite
                     mount_table.delete_record(rec.record_id)
 
-            mount_record = mount_table.add_record(dataset, mount_path, status=sdm_mount_table.MountRecordStatus.UNMOUNTED)
+            mount_record = mount_table.add_record(dataset, mount_path, sdm_backends.Backends.FUSE, sdm_mount_table.MountRecordStatus.UNMOUNTED)
             mount_table.save_table()
 
             syndicatefs.mount(
@@ -159,8 +160,8 @@ def process_mount_dataset(dataset, mount_path):
                 user_pkey,
                 entry.gateway,
                 mount_path,
-                debug_mode=config.get_syndicate_debug_mode(),
-                debug_level=config.get_syndicate_debug_level(),
+                debug_mode=config.get_backend_config(sdm_backends.Backends.FUSE).syndicate_debug_mode,
+                debug_level=config.get_backend_config(sdm_backends.Backends.FUSE).syndicate_debug_level,
             )
             mount_record.status = sdm_mount_table.MountRecordStatus.MOUNTED
             mount_table.save_table()
@@ -185,7 +186,7 @@ def mount_dataset(argv):
     if len(argv) >= 1:
         dataset = argv[0].strip().lower()
         mount_path = "%s/%s" % (
-            config.get_default_mount_path().rstrip("/"),
+            config.get_backend_config(sdm_backends.Backends.FUSE).default_mount_path.rstrip("/"),
             dataset
         )
 
@@ -209,7 +210,7 @@ def mount_multi_dataset(argv):
         for d in argv:
             dataset = d.strip().lower()
             mount_path = "%s/%s" % (
-                config.get_default_mount_path().rstrip("/"),
+                config.get_backend_config(sdm_backends.Backends.FUSE).default_mount_path.rstrip("/"),
                 dataset
             )
 

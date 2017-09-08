@@ -18,6 +18,7 @@
 import os
 import os.path
 import hashlib
+import backends as sdm_backends
 
 from os.path import expanduser
 
@@ -37,7 +38,7 @@ class MountRecord(object):
     """
     mount table record
     """
-    def __init__(self, record_id="", dataset="", mount_path="", status=MountRecordStatus.UNMOUNTED):
+    def __init__(self, record_id="", dataset="", mount_path="", backend=sdm_backends.Backends.FUSE, status=MountRecordStatus.UNMOUNTED):
         self.dataset = dataset.strip().lower()
         self.mount_path = os.path.abspath(expanduser(mount_path.strip()))
 
@@ -45,6 +46,8 @@ class MountRecord(object):
             self.record_id = record_id.strip().lower()
         else:
             self.record_id = self._make_record_id(self.dataset, mount_path)
+
+        self.backend = backend
 
         if status.strip().upper() == MountRecordStatus.MOUNTED:
             self.status = MountRecordStatus.MOUNTED
@@ -58,24 +61,25 @@ class MountRecord(object):
     @classmethod
     def from_line(cls, line):
         fields = line.strip().split("\t")
-        if len(fields) == 4:
+        if len(fields) == 5:
             record_id = fields[0].strip()
             dataset = fields[1].strip()
             mount_path = fields[2].strip()
-            status = fields[3].strip()
-            return MountRecord(record_id, dataset, mount_path, status)
+            backend = sdm_backends.Backends.from_str(fields[3].strip())
+            status = fields[4].strip()
+            return MountRecord(record_id, dataset, mount_path, backend, status)
         else:
             raise MountTableException("unrecognized format - %s" % line)
 
     def to_line(self):
-        return "%s\t%s\t%s\t%s" % (self.record_id, self.dataset, self.mount_path, self.status)
+        return "%s\t%s\t%s\t%s\t%s" % (self.record_id, self.dataset, self.mount_path, self.backend, self.status)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<MountRecord %s %s %s>" % \
-            (self.record_id[:8], self.dataset, self.mount_path)
+        return "<MountRecord %s %s %s %s>" % \
+            (self.record_id[:8], self.dataset, self.mount_path, self.backend)
 
 
 class MountTable(object):
@@ -142,6 +146,13 @@ class MountTable(object):
                 records.append(record)
         return records
 
+    def get_records_by_backend(self, backend):
+        records = []
+        for record in self.table:
+            if record.backend == backend:
+                records.append(record)
+        return records
+
     def get_records_by_status(self, status):
         records = []
         for record in self.table:
@@ -149,8 +160,8 @@ class MountTable(object):
                 records.append(record)
         return records
 
-    def add_record(self, dataset, mount_path, status):
-        record = MountRecord(dataset=dataset, mount_path=mount_path, status=status)
+    def add_record(self, dataset, mount_path, backend, status):
+        record = MountRecord(dataset=dataset, mount_path=mount_path, backend=backend, status=status)
         exist = False
 
         for r in self.table:

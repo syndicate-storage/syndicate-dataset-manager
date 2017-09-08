@@ -18,51 +18,15 @@
 import os
 import os.path
 import json
+import syndicate_user as sdm_syndicate_user
+import backends as sdm_backends
 
 from os.path import expanduser
 
 CONFIG_PATH = "~/.sdm/sdm.conf"
 
 DEFAULT_REPO_URL = "https://butler.opencloud.cs.arizona.edu/sdm/catalogue"
-DEFAULT_MOUNT_PATH = "~/sdm_mounts/"
-DEFAULT_SYNDICATE_DEBUG_MODE = True
-DEFAULT_SYNDICATE_DEBUG_LEVEL = 3
-
-DEFAULT_SYNDICATE_USERNAME = "dc_anonymous_user@opencloud.us"
-DEFAULT_SYNDICATE_USER_PKEY = "-----BEGIN RSA PRIVATE KEY-----\n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\n-----END RSA PRIVATE KEY-----"
-DEFAULT_SYNDICATE_USER_MS_HOST = "http://syndicate-ms-datasets-prod.appspot.com:80"
-
-
-class SyndicateUser(object):
-    """
-    syndicate user info
-    """
-    def __init__(self, username, user_pkey, ms_host):
-        self.username = username.strip()
-        self.user_pkey = user_pkey.strip()
-        self.ms_host = ms_host.strip()
-
-    @classmethod
-    def from_dict(cls, d):
-        return SyndicateUser(
-            d["username"],
-            d["user_pkey"],
-            d["ms_host"]
-        )
-
-    def to_json(self):
-        return json.dumps({
-            "username": self.username,
-            "user_pkey": self.user_pkey,
-            "ms_host": self.ms_host
-        })
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
-
-    def __repr__(self):
-        return "<SyndicateUser %s %s>" % \
-            (self.username, self.ms_host)
+DEFAULT_BACKEND = sdm_backends.Backends.FUSE
 
 
 class Config(object):
@@ -71,16 +35,9 @@ class Config(object):
     """
     def __init__(self, path=CONFIG_PATH):
         self.repo_url = DEFAULT_REPO_URL
-        self.default_mount_path = DEFAULT_MOUNT_PATH
-        self.syndicate_debug_mode = DEFAULT_SYNDICATE_DEBUG_MODE
-        self.syndicate_debug_level = DEFAULT_SYNDICATE_DEBUG_LEVEL
-        default_syndicate_user = SyndicateUser(
-            DEFAULT_SYNDICATE_USERNAME,
-            DEFAULT_SYNDICATE_USER_PKEY,
-            DEFAULT_SYNDICATE_USER_MS_HOST
-        )
-        self.syndicate_users = []
-        self.syndicate_users.append(default_syndicate_user)
+        self.default_backend = DEFAULT_BACKEND
+        self.backend_configs = sdm_backends.Backends.get_default_backend_configs()
+        self.syndicate_users = sdm_syndicate_user.get_default_users()
 
         try:
             self.load_config(path)
@@ -88,35 +45,38 @@ class Config(object):
             self.save_config(path)
 
     def _save(self):
+        bconfigs = {}
+        for bk in self.backend_configs.keys():
+            bc = self.backend_configs[bk]
+            bconfigs[bk] = bc.__dict__
+
         susers = []
         for suser in self.syndicate_users:
             susers.append(suser.__dict__)
 
         return {
-            "REPO_URL": self.repo_url,
-            "DEFAULT_MOUNT_PATH": self.default_mount_path,
-            "SYNDICATE_DEBUG_MODE": self.syndicate_debug_mode,
-            "SYNDICATE_DEBUG_LEVEL": self.syndicate_debug_level,
-            "SYNDICATE_USERS": susers
+            "repo_url": self.repo_url,
+            "default_backend": self.default_backend,
+            "backend_configs": bconfigs,
+            "syndicate_users": susers
         }
 
     def _load(self, conf):
         for k in conf.keys():
-            kl = k.strip().lower()
-            if kl == "repo_url":
+            if k == "repo_url":
                 self.repo_url = conf[k].strip()
-            elif kl == "default_mount_path":
-                self.default_mount_path = conf[k].strip()
-            elif kl == "syndicate_debug_mode":
-                self.syndicate_debug_mode = bool(conf[k])
-            elif kl == "syndicate_debug_level":
-                self.syndicate_debug_level = int(conf[k])
-            elif kl == "syndicate_users":
-                self.syndicate_users = []
+            elif k == "default_backend":
+                self.default_backend = sdm_backends.Backends.from_str(conf[k])
+            elif k == "backend_configs":
+                for bk in conf[k].keys():
+                    bc = conf[k][bk]
+                    backend = sdm_backends.Backends.from_str(bk)
+                    backend_config = sdm_backends.Backends.objectfy_backend_config_from_dict(backend, bc)
+                    self.add_backend_config(backend, backend_config)
+            elif k == "syndicate_users":
                 for syndicate_user in conf[k]:
-                    self.syndicate_users.append(
-                        SyndicateUser.from_dict(syndicate_user)
-                    )
+                    user = sdm_syndicate_user.SyndicateUser.from_dict(syndicate_user)
+                    self.add_syndicate_user(user)
 
     def load_config(self, path=CONFIG_PATH):
         abs_path = os.path.abspath(expanduser(path).strip())
@@ -134,31 +94,7 @@ class Config(object):
 
         with open(abs_path, 'w') as f:
             conf = self._save()
-            json.dump(conf, f)
-
-    def get_repo_url(self):
-        return self.repo_url
-
-    def set_repo_rul(self, repo_url):
-        self.repo_url = repo_url
-
-    def get_default_mount_path(self):
-        return self.default_mount_path
-
-    def set_default_mount_path(self, default_mount_path):
-        self.default_mount_path = default_mount_path
-
-    def get_syndicate_debug_mode(self):
-        return self.syndicate_debug_mode
-
-    def set_syndicate_debug_mode(self, syndicate_debug_mode):
-        self.syndicate_debug_mode = syndicate_debug_mode
-
-    def get_syndicate_debug_level(self):
-        return self.syndicate_debug_level
-
-    def set_syndicate_debug_level(self, syndicate_debug_level):
-        self.syndicate_debug_level = syndicate_debug_level
+            json.dump(conf, f, sort_keys=True, indent=4, separators=(',', ': '))
 
     def list_syndicate_users(self):
         users = []
@@ -174,4 +110,23 @@ class Config(object):
         return users
 
     def add_syndicate_user(self, user):
+        # check duplication
+        exist_user = None
+        for euser in self.syndicate_users:
+            if euser.username == user.username and euser.ms_host == user.ms_host:
+                # exist! - overwrite
+                exist_user = euser
+                break
+
+        if exist_user:
+            self.syndicate_users.remove(exist_user)
+
         self.syndicate_users.append(user)
+
+    def get_backend_config(self, backend):
+        if backend in self.backend_configs:
+            return self.backend_configs[backend]
+        return None
+
+    def add_backend_config(self, backend, backend_config):
+        self.backend_configs[backend] = backend_config
