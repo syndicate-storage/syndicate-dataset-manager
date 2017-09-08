@@ -43,7 +43,9 @@ def _fill_commands_table():
     COMMANDS.append((["list_datasets", "ls", "list"], list_datasets, "list available datasets"))
     COMMANDS.append((["show_mounts", "ps", "status"], show_mounts, "show mount status"))
     COMMANDS.append((["mount", "mnt"], mount_dataset, "mount a dataset"))
+    COMMANDS.append((["mmount", "mmnt"], mount_multi_dataset, "mount multi-datasets"))
     COMMANDS.append((["unmount", "umount", "umnt"], unmount_dataset, "unmount a dataset"))
+    COMMANDS.append((["munmount", "mumount", "mumnt"], unmount_multi_dataset, "unmount multi-dataset"))
     COMMANDS.append((["clean"], clean_mounts, "clear broken mounts"))
     COMMANDS.append((["help", "h"], show_help, "show help"))
 
@@ -199,6 +201,26 @@ def mount_dataset(argv):
         return 1
 
 
+def mount_multi_dataset(argv):
+    # args
+    # 1. dataset name
+    if len(argv) >= 1:
+        res = 0
+        for d in argv:
+            dataset = d.strip().lower()
+            mount_path = "%s/%s" % (
+                config.get_default_mount_path().rstrip("/"),
+                dataset
+            )
+
+            abs_mount_path = os.path.abspath(expanduser(mount_path))
+            res |= process_mount_dataset(dataset, abs_mount_path)
+        return res
+    else:
+        show_help(["mmount"])
+        return 1
+
+
 def process_unmount_dataset(record_id, cleanup=False):
     try:
         records = mount_table.get_records_by_record_id(record_id)
@@ -269,6 +291,46 @@ def unmount_dataset(argv):
         return 1
 
 
+def unmount_multi_dataset(argv):
+    # args
+    # 1. dataset name OR mount_path
+    if len(argv) >= 1:
+        cleanup = False
+        res = 0
+        for arg in argv:
+            if len(mount_table.get_records_by_dataset(arg)) > 0:
+                # dataset
+                records = mount_table.get_records_by_dataset(arg)
+                if len(records) == 1:
+                    res |= process_unmount_dataset(records[0].record_id, cleanup)
+                else:
+                    print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                    res |= 1
+            elif len(mount_table.get_records_by_mount_path(arg)) > 0:
+                # maybe path?
+                records = mount_table.get_records_by_mount_path(arg)
+                if len(records) == 1:
+                    res |= process_unmount_dataset(records[0].record_id, cleanup)
+                else:
+                    print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                    res |= 1
+            elif len(mount_table.get_records_by_record_id(arg)) > 0:
+                # maybe record_id?
+                records = mount_table.get_records_by_record_id(arg)
+                if len(records) == 1:
+                    res |= process_unmount_dataset(records[0].record_id, cleanup)
+                else:
+                    print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                    res |= 1
+            else:
+                print "Cannot find mount - %s" % arg
+                res |= 1
+        return res
+    else:
+        show_help(["unmount"])
+        return 1
+
+
 def clean_mounts(argv):
     records = mount_table.list_records()
     for rec in records:
@@ -299,10 +361,24 @@ def show_help(argv=None):
             print ""
             print desc
             return 0
+        elif "mmount" in argv:
+            karr, _, desc = COMMANDS_TABLE["mmount"]
+            print "command : %s" % (" | ".join(karr))
+            print "usage : sdm mmount <dataset_name> [<dataset_name> ...]"
+            print ""
+            print desc
+            return 0
         elif "unmount" in argv:
             karr, _, desc = COMMANDS_TABLE["unmount"]
             print "command : %s" % (" | ".join(karr))
             print "usage : sdm unmount <mount_id> [<cleanup_flag>]"
+            print ""
+            print desc
+            return 0
+        elif "munmount" in argv:
+            karr, _, desc = COMMANDS_TABLE["munmount"]
+            print "command : %s" % (" | ".join(karr))
+            print "usage : sdm munmount <mount_id> [<mount_id> ...]"
             print ""
             print desc
             return 0
