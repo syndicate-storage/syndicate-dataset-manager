@@ -23,7 +23,6 @@ import config as sdm_config
 import mount_table as sdm_mount_table
 import repository as sdm_repository
 import backends as sdm_backends
-import syndicatefs_mount as sdm_syndicatefs_mount
 
 from os.path import expanduser
 from prettytable import PrettyTable
@@ -32,7 +31,7 @@ from prettytable import PrettyTable
 config = sdm_config.Config()
 mount_table = sdm_mount_table.MountTable()
 repository = sdm_repository.Repository(config.repo_url)
-syndicatefs = sdm_syndicatefs_mount.SyndicatefsMount()
+backend = config.default_backend
 
 
 COMMANDS = []
@@ -94,7 +93,9 @@ def show_mounts(argv):
         need_sync = False
         for rec in records:
             # detect out-of-sync record
-            is_mounted = syndicatefs.check_mount(rec.mount_path)
+            bimpl = sdm_backends.Backends.get_backend_instance(rec.backend, config.get_backend_config(rec.backend))
+
+            is_mounted = bimpl.check_mount(rec.mount_path)
             is_status_mounted = rec.status == sdm_mount_table.MountRecordStatus.MOUNTED
 
             if is_mounted != is_status_mounted:
@@ -125,7 +126,6 @@ def show_mounts(argv):
 def process_mount_dataset(dataset, mount_path):
     entry = repository.get_entry(dataset)
     if entry:
-
         username = entry.username
         user_pkey = entry.user_pkey
         if username.strip() == "" or user_pkey.strip() == "":
@@ -149,19 +149,18 @@ def process_mount_dataset(dataset, mount_path):
                     # delete and overwrite
                     mount_table.delete_record(rec.record_id)
 
-            mount_record = mount_table.add_record(dataset, mount_path, sdm_backends.Backends.FUSE, sdm_mount_table.MountRecordStatus.UNMOUNTED)
+            mount_record = mount_table.add_record(dataset, mount_path, backend, sdm_mount_table.MountRecordStatus.UNMOUNTED)
             mount_table.save_table()
 
-            syndicatefs.mount(
+            bimpl = sdm_backends.Backends.get_backend_instance(backend, config.get_backend_config(backend))
+            bimpl.mount(
                 mount_record.record_id,
                 entry.ms_host,
                 entry.dataset,
                 username,
                 user_pkey,
                 entry.gateway,
-                mount_path,
-                debug_mode=config.get_backend_config(sdm_backends.Backends.FUSE).syndicate_debug_mode,
-                debug_level=config.get_backend_config(sdm_backends.Backends.FUSE).syndicate_debug_level,
+                mount_path
             )
             mount_record.status = sdm_mount_table.MountRecordStatus.MOUNTED
             mount_table.save_table()
@@ -170,7 +169,7 @@ def process_mount_dataset(dataset, mount_path):
             print "Cannot mount dataset - %s to  %s" % (dataset, mount_path)
             print e
             return 1
-        except sdm_syndicatefs_mount.SyndicatefsMountException, e:
+        except sdm_backends.BackendException, e:
             print "Cannot mount dataset - %s to  %s" % (dataset, mount_path)
             print e
             return 1
@@ -185,18 +184,22 @@ def mount_dataset(argv):
     # 2. mount_path (optional)
     if len(argv) >= 1:
         dataset = argv[0].strip().lower()
-        mount_path = "%s/%s" % (
-            config.get_backend_config(sdm_backends.Backends.FUSE).default_mount_path.rstrip("/"),
-            dataset
-        )
+        if backend == sdm_backends.Backends.FUSE:
+            mount_path = "%s/%s" % (
+                config.get_backend_config(backend).default_mount_path.rstrip("/"),
+                dataset
+            )
 
-        if len(argv) == 2:
-            mount_path = argv[1].strip().rstrip("/")
-            if len(mount_path) == 0:
-                mount_path = "/"
+            if len(argv) == 2:
+                mount_path = argv[1].strip().rstrip("/")
+                if len(mount_path) == 0:
+                    mount_path = "/"
 
-        abs_mount_path = os.path.abspath(expanduser(mount_path))
-        return process_mount_dataset(dataset, abs_mount_path)
+            abs_mount_path = os.path.abspath(expanduser(mount_path))
+            return process_mount_dataset(dataset, abs_mount_path)
+        else:
+            print "Not implemented yet"
+            return 1
     else:
         show_help(["mount"])
         return 1
@@ -209,13 +212,17 @@ def mount_multi_dataset(argv):
         res = 0
         for d in argv:
             dataset = d.strip().lower()
-            mount_path = "%s/%s" % (
-                config.get_backend_config(sdm_backends.Backends.FUSE).default_mount_path.rstrip("/"),
-                dataset
-            )
+            if backend == sdm_backends.Backends.FUSE:
+                mount_path = "%s/%s" % (
+                    config.get_backend_config(backend).default_mount_path.rstrip("/"),
+                    dataset
+                )
 
-            abs_mount_path = os.path.abspath(expanduser(mount_path))
-            res |= process_mount_dataset(dataset, abs_mount_path)
+                abs_mount_path = os.path.abspath(expanduser(mount_path))
+                res |= process_mount_dataset(dataset, abs_mount_path)
+            else:
+                print "Not implemented yet"
+                return 1
         return res
     else:
         show_help(["mmount"])
@@ -231,23 +238,24 @@ def process_unmount_dataset(record_id, cleanup=False):
                 print "Dataset is already unmounted"
                 return 1
 
+            bimpl = sdm_backends.Backends.get_backend_instance(record.backend, config.get_backend_config(record.backend))
             record.status = sdm_mount_table.MountRecordStatus.UNMOUNTED
 
-            syndicatefs.unmount(record.record_id, record.mount_path, cleanup)
+            bimpl.unmount(record.record_id, record.mount_path, cleanup)
             if cleanup:
                 mount_table.delete_record(record.record_id)
 
             mount_table.save_table()
             return 0
         else:
-            print "Cannot unmount dataset. There are %d mounts" % len(records)
+            print "Cannot unmount. There are %d mounts" % len(records)
             return 1
     except sdm_mount_table.MountTableException, e:
-        print "Cannot unmount dataset - %s" % (record_id)
+        print "Cannot unmount - %s" % (record_id)
         print e
         return 1
-    except sdm_syndicatefs_mount.SyndicatefsMountException, e:
-        print "Cannot unmount dataset - %s" % (record_id)
+    except sdm_backends.BackendException, e:
+        print "Cannot unmount - %s" % (record_id)
         print e
         return 1
 
@@ -338,6 +346,7 @@ def clean_mounts(argv):
         if rec.status == sdm_mount_table.MountRecordStatus.UNMOUNTED:
             process_unmount_dataset(rec.record_id, True)
     return 0
+
 
 def show_help(argv=None):
     if argv:

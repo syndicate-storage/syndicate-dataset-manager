@@ -23,6 +23,10 @@ class UnknownBackend(Exception):
     pass
 
 
+class BackendException(Exception):
+    pass
+
+
 class Backends(object):
     FUSE = "FUSE"
     REST = "REST"
@@ -37,14 +41,28 @@ class Backends(object):
             raise UnknownBackend("unknown backend - %s" % name)
 
     @classmethod
-    def get_backend_instance(cls, backend):
+    def get_backend_instance(cls, backend, backend_config):
+        if backend == cls.FUSE:
+            return sdm_fuse_backend.FuseBackend(backend_config)
+        elif backend == cls.REST:
+            return sdm_rest_backend.RestBackend(backend_config)
+
+    @classmethod
+    def get_backend_class(cls, backend):
+        if backend == cls.FUSE:
+            return sdm_fuse_backend.FuseBackend
+        elif backend == cls.REST:
+            return sdm_rest_backend.RestBackend
+
+    @classmethod
+    def get_backend_config_instance(cls, backend):
         if backend == cls.FUSE:
             return sdm_fuse_backend.FuseBackendConfig()
         elif backend == cls.REST:
             return sdm_rest_backend.RestBackendConfig()
 
     @classmethod
-    def get_backend_class(cls, backend):
+    def get_backend_config_class(cls, backend):
         if backend == cls.FUSE:
             return sdm_fuse_backend.FuseBackendConfig
         elif backend == cls.REST:
@@ -54,10 +72,10 @@ class Backends(object):
     def get_default_backend_configs(cls):
         configs = {}
         for b in [Backends.FUSE, Backends.REST]:
-            configs[b] = Backends.get_backend_class(b).get_default_config()
+            configs[b] = Backends.get_backend_config_class(b).get_default_config()
 
         return configs
 
     @classmethod
     def objectfy_backend_config_from_dict(cls, backend, d):
-        return Backends.get_backend_class(backend).from_dict(d)
+        return Backends.get_backend_config_class(backend).from_dict(d)

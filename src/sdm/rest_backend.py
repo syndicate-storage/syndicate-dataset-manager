@@ -53,3 +53,8 @@ class RestBackendConfig(object):
     def __repr__(self):
         return "<RestBackendConfig %s %s>" % \
             (self.default_mount_path)
+
+
+class RestBackend(object):
+    def __init__(self, backend_config):
+        self.backend_config = backend_config
