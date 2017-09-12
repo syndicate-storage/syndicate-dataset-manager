@@ -25,6 +25,7 @@ import tempfile
 import shlex
 import shutil
 import backends as sdm_backends
+import util as sdm_util
 
 from os.path import expanduser
 
@@ -173,7 +174,7 @@ class FuseBackend(object):
 
     def _run_command_foreground(self, command):
         try:
-            # print "Running an external process - %s:" % command
+            sdm_util.log_message("Running an external process - %s" % command, sdm_util.LogLevel.DEBUG)
             proc = subprocess.Popen(
                 shlex.split(command),
                 stderr=subprocess.STDOUT,
@@ -194,7 +195,7 @@ class FuseBackend(object):
 
     def _run_command_background(self, command, log_path):
         try:
-            # print "Running an external process in background - %s:" % command
+            sdm_util.log_message("Running an external process in background - %s" % command, sdm_util.LogLevel.DEBUG)
             fd = open(log_path, "w")
             fileno = fd.fileno()
             proc = subprocess.Popen(
@@ -228,7 +229,7 @@ class FuseBackend(object):
         syndicate_command = self._make_syndicate_command(mount_id, debug_mode)
 
         if not skip_config:
-            print "Registering a syndicate user, %s" % username
+            sdm_util.log_message("Registering a syndicate user, %s" % username)
             user_pkey_fd, user_pkey_path = tempfile.mkstemp()
             f = os.fdopen(user_pkey_fd, "w")
             f.write(user_pkey)
@@ -243,7 +244,7 @@ class FuseBackend(object):
 
             try:
                 self._run_command_foreground(command_register)
-                print "Successfully registered a syndicate user, %s" % username
+                sdm_util.log_message("Successfully registered a syndicate user, %s" % username)
             finally:
                 os.remove(user_pkey_path)
 
@@ -261,14 +262,14 @@ class FuseBackend(object):
         )
 
         self._run_command_foreground(command_reload_user_cert)
-        print "Successfully reloaded a user cert, %s" % username
+        sdm_util.log_message("Successfully reloaded a user cert, %s" % username)
         self._run_command_foreground(command_reload_volume_cert)
-        print "Successfully reloaded a volume cert, %s" % dataset
+        sdm_util.log_message("Successfully reloaded a volume cert, %s" % dataset)
         self._run_command_foreground(command_reload_gatway_cert)
-        print "Successfully reloaded a gateway cert, %s" % gateway_name
+        sdm_util.log_message("Successfully reloaded a gateway cert, %s" % gateway_name)
 
     def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path, debug_mode=False, debug_level=1):
-        print "Mounting syndicatefs, %s to %s" % (dataset, mount_path)
+        sdm_util.log_message("Mounting syndicatefs, %s to %s" % (dataset, mount_path))
 
         abs_mount_path = os.path.abspath(expanduser(mount_path.strip()))
         if not os.path.exists(abs_mount_path):
@@ -288,7 +289,7 @@ class FuseBackend(object):
 
         self._run_command_background(command_mount, syndicatefs_log_path)
         self._wait_mount(abs_mount_path, retry=3)
-        print "Successfully mounted syndicatefs, %s to %s" % (dataset, abs_mount_path)
+        sdm_util.print_message("Successfully mounted syndicatefs, %s to %s" % (dataset, abs_mount_path), True)
 
     def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, force=False):
         self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host, self.backend_config.syndicate_debug_mode, force)
@@ -317,4 +318,4 @@ class FuseBackend(object):
             # clean up
             config_root_path = self._make_syndicate_configuration_root_path(mount_id)
             shutil.rmtree(config_root_path)
-        print "Successfully unmounted syndicatefs, %s" % (mount_path)
+        sdm_util.print_message("Successfully unmounted syndicatefs, %s" % (mount_path), True)

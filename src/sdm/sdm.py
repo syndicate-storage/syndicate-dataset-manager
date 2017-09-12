@@ -19,10 +19,12 @@ import os
 import os.path
 import sys
 import traceback
+import logging
 import config as sdm_config
 import mount_table as sdm_mount_table
 import repository as sdm_repository
 import backends as sdm_backends
+import util as sdm_util
 
 from os.path import expanduser
 from prettytable import PrettyTable
@@ -33,13 +35,17 @@ mount_table = sdm_mount_table.MountTable()
 repository = sdm_repository.Repository(config.repo_url)
 backend = config.default_backend
 
-
+OPTIONS_TABLE = {}
 COMMANDS = []
-
 COMMANDS_TABLE = {}
 
 
-def _fill_commands_table():
+def fill_options_table():
+    OPTIONS_TABLE["log"] = getattr(logging, "WARNING", None)
+    OPTIONS_TABLE["backend"] = sdm_backends.Backends.FUSE
+
+
+def fill_commands_table():
     COMMANDS.append((["list_datasets", "ls", "list"], list_datasets, "list available datasets"))
     COMMANDS.append((["show_mounts", "ps", "status"], show_mounts, "show mount status"))
     COMMANDS.append((["mount", "mnt"], mount_dataset, "mount a dataset"))
@@ -68,10 +74,10 @@ def list_datasets(argv):
             cnt += 1
             tbl.add_row([ent.dataset, ent.description])
 
-        print tbl
+        sdm_util.print_message(tbl)
 
         if cnt == 0:
-            print "No available dataset"
+            sdm_util.print_message("No available dataset")
             return 0
         else:
             return 0
@@ -108,13 +114,13 @@ def show_mounts(argv):
             cnt += 1
             tbl.add_row([rec.record_id[:12], rec.dataset, rec.mount_path, rec.backend, rec.status])
 
-        print tbl
+        sdm_util.print_message(tbl)
 
         if need_sync:
             mount_table.save_table()
 
         if cnt == 0:
-            print "No mounts"
+            sdm_util.print_message("No mounts")
             return 0
         else:
             return 0
@@ -137,7 +143,7 @@ def process_mount_dataset(dataset, mount_path):
                 break
 
         if username.strip() == "" or user_pkey.strip() == "":
-            print "Cannot find user accounts to access the dataset - %s" % (dataset)
+            sdm_util.print_message("Cannot find user accounts to access the dataset - %s" % (dataset))
             return 1
 
         try:
@@ -166,15 +172,15 @@ def process_mount_dataset(dataset, mount_path):
             mount_table.save_table()
             return 0
         except sdm_mount_table.MountTableException, e:
-            print "Cannot mount dataset - %s to  %s" % (dataset, mount_path)
-            print e
+            sdm_util.print_message("Cannot mount dataset - %s to  %s" % (dataset, mount_path), True, sdm_util.LogLevel.ERROR)
+            sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
             return 1
         except sdm_backends.BackendException, e:
-            print "Cannot mount dataset - %s to  %s" % (dataset, mount_path)
-            print e
+            sdm_util.print_message("Cannot mount dataset - %s to  %s" % (dataset, mount_path), True, sdm_util.LogLevel.ERROR)
+            sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
             return 1
     else:
-        print "Dataset not found - %s" % dataset
+        sdm_util.print_message("Dataset not found - %s" % dataset)
         return 1
 
 
@@ -198,7 +204,7 @@ def mount_dataset(argv):
             abs_mount_path = os.path.abspath(expanduser(mount_path))
             return process_mount_dataset(dataset, abs_mount_path)
         else:
-            print "Not implemented yet"
+            sdm_util.print_message("Not implemented yet")
             return 1
     else:
         show_help(["mount"])
@@ -221,7 +227,7 @@ def mount_multi_dataset(argv):
                 abs_mount_path = os.path.abspath(expanduser(mount_path))
                 res |= process_mount_dataset(dataset, abs_mount_path)
             else:
-                print "Not implemented yet"
+                sdm_util.print_message("Not implemented yet")
                 return 1
         return res
     else:
@@ -235,7 +241,7 @@ def process_unmount_dataset(record_id, cleanup=False):
         if len(records) == 1:
             record = records[0]
             if not cleanup and record.status == sdm_mount_table.MountRecordStatus.UNMOUNTED:
-                print "Dataset is already unmounted"
+                sdm_util.print_message("Dataset is already unmounted")
                 return 1
 
             bimpl = sdm_backends.Backends.get_backend_instance(record.backend, config.get_backend_config(record.backend))
@@ -248,15 +254,15 @@ def process_unmount_dataset(record_id, cleanup=False):
             mount_table.save_table()
             return 0
         else:
-            print "Cannot unmount. There are %d mounts" % len(records)
+            sdm_util.print_message("Cannot unmount. There are %d mounts" % len(records))
             return 1
     except sdm_mount_table.MountTableException, e:
-        print "Cannot unmount - %s" % (record_id)
-        print e
+        sdm_util.print_message("Cannot unmount - %s" % (record_id), True, sdm_util.LogLevel.ERROR)
+        sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
         return 1
     except sdm_backends.BackendException, e:
-        print "Cannot unmount - %s" % (record_id)
-        print e
+        sdm_util.print_message("Cannot unmount - %s" % (record_id), True, sdm_util.LogLevel.ERROR)
+        sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
         return 1
 
 
@@ -274,7 +280,7 @@ def unmount_dataset(argv):
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id, cleanup)
             else:
-                print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                 return 1
         elif len(mount_table.get_records_by_mount_path(argv[0])) > 0:
             # maybe path?
@@ -282,7 +288,7 @@ def unmount_dataset(argv):
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id, cleanup)
             else:
-                print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                 return 1
         elif len(mount_table.get_records_by_record_id(argv[0])) > 0:
             # maybe record_id?
@@ -290,10 +296,10 @@ def unmount_dataset(argv):
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id, cleanup)
             else:
-                print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                 return 1
         else:
-            print "Cannot find mount - %s" % argv[0]
+            sdm_util.print_message("Cannot find mount - %s" % argv[0])
             return 1
     else:
         show_help(["unmount"])
@@ -313,7 +319,7 @@ def unmount_multi_dataset(argv):
                 if len(records) == 1:
                     res |= process_unmount_dataset(records[0].record_id, cleanup)
                 else:
-                    print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                    sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                     res |= 1
             elif len(mount_table.get_records_by_mount_path(arg)) > 0:
                 # maybe path?
@@ -321,7 +327,7 @@ def unmount_multi_dataset(argv):
                 if len(records) == 1:
                     res |= process_unmount_dataset(records[0].record_id, cleanup)
                 else:
-                    print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                    sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                     res |= 1
             elif len(mount_table.get_records_by_record_id(arg)) > 0:
                 # maybe record_id?
@@ -329,10 +335,10 @@ def unmount_multi_dataset(argv):
                 if len(records) == 1:
                     res |= process_unmount_dataset(records[0].record_id, cleanup)
                 else:
-                    print "Cannot unmount dataset. There are more %d mounts" % len(records)
+                    sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                     res |= 1
             else:
-                print "Cannot find mount - %s" % arg
+                sdm_util.print_message("Cannot find mount - %s" % arg)
                 res |= 1
         return res
     else:
@@ -352,60 +358,60 @@ def show_help(argv=None):
     if argv:
         if "list_datasets" in argv:
             karr, _, desc = COMMANDS_TABLE["list_datasets"]
-            print "command : %s" % (" | ".join(karr))
-            print "usage : sdm ls"
-            print ""
-            print desc
+            sdm_util.print_message("command : %s" % (" | ".join(karr)))
+            sdm_util.print_message("usage : sdm ls")
+            sdm_util.print_message("")
+            sdm_util.print_message(desc)
             return 0
         elif "show_mounts" in argv:
             karr, _, desc = COMMANDS_TABLE["show_mounts"]
-            print "command : %s" % (" | ".join(karr))
-            print "usage : sdm ps"
-            print ""
-            print desc
+            sdm_util.print_message("command : %s" % (" | ".join(karr)))
+            sdm_util.print_message("usage : sdm ps")
+            sdm_util.print_message("")
+            sdm_util.print_message(desc)
             return 0
         elif "mount" in argv:
             karr, _, desc = COMMANDS_TABLE["mount"]
-            print "command : %s" % (" | ".join(karr))
-            print "usage : sdm mount <dataset_name> [<mount_path>]"
-            print ""
-            print desc
+            sdm_util.print_message("command : %s" % (" | ".join(karr)))
+            sdm_util.print_message("usage : sdm mount <dataset_name> [<mount_path>]")
+            sdm_util.print_message("")
+            sdm_util.print_message(desc)
             return 0
         elif "mmount" in argv:
             karr, _, desc = COMMANDS_TABLE["mmount"]
-            print "command : %s" % (" | ".join(karr))
-            print "usage : sdm mmount <dataset_name> [<dataset_name> ...]"
-            print ""
-            print desc
+            sdm_util.print_message("command : %s" % (" | ".join(karr)))
+            sdm_util.print_message("usage : sdm mmount <dataset_name> [<dataset_name> ...]")
+            sdm_util.print_message("")
+            sdm_util.print_message(desc)
             return 0
         elif "unmount" in argv:
             karr, _, desc = COMMANDS_TABLE["unmount"]
-            print "command : %s" % (" | ".join(karr))
-            print "usage : sdm unmount <mount_id> [<cleanup_flag>]"
-            print ""
-            print desc
+            sdm_util.print_message("command : %s" % (" | ".join(karr)))
+            sdm_util.print_message("usage : sdm unmount <mount_id> [<cleanup_flag>]")
+            sdm_util.print_message("")
+            sdm_util.print_message(desc)
             return 0
         elif "munmount" in argv:
             karr, _, desc = COMMANDS_TABLE["munmount"]
-            print "command : %s" % (" | ".join(karr))
-            print "usage : sdm munmount <mount_id> [<mount_id> ...]"
-            print ""
-            print desc
+            sdm_util.print_message("command : %s" % (" | ".join(karr)))
+            sdm_util.print_message("usage : sdm munmount <mount_id> [<mount_id> ...]")
+            sdm_util.print_message("")
+            sdm_util.print_message(desc)
             return 0
         elif "clean" in argv:
             karr, _, desc = COMMANDS_TABLE["clean"]
-            print "command : %s" % (" | ".join(karr))
-            print "usage : sdm clean"
-            print ""
-            print desc
+            sdm_util.print_message("command : %s" % (" | ".join(karr)))
+            sdm_util.print_message("usage : sdm clean")
+            sdm_util.print_message("")
+            sdm_util.print_message(desc)
             return 0
         else:
-            print "Unrecognized command"
+            sdm_util.print_message("Unrecognized command")
             return 1
     else:
-        print "command : sdm <COMMAND> [<COMMAND_SPECIFIC_ARGS> ...]"
-        print ""
-        print "Available Commands"
+        sdm_util.print_message("command : sdm <COMMAND> [<COMMAND_SPECIFIC_ARGS> ...]")
+        sdm_util.print_message("")
+        sdm_util.print_message("Available Commands")
 
         tbl = PrettyTable()
         tbl.field_names = ["COMMAND", "DESCRIPTION"]
@@ -414,8 +420,8 @@ def show_help(argv=None):
             command_str = " | ".join(command)
             tbl.add_row([command_str, desc])
 
-        print tbl
-        print ""
+        sdm_util.print_message(tbl)
+        sdm_util.print_message("")
         return 0
 
 
@@ -432,11 +438,60 @@ def run(command, argv):
         raise ValueError("Unrecognized command: %s" % (command))
 
 
+def set_option(k, v="True"):
+    if k == "log":
+        OPTIONS_TABLE[k] = getattr(logging, v.upper(), None)
+    elif k == "backend":
+        OPTIONS_TABLE[k] = sdm_backends.Backends.from_str(v)
+
+
+def extract_options(argv):
+    new_argv = []
+    for arg in argv:
+        if arg.startswith("--"):
+            # extract
+            p = arg[2:]
+            if "=" in p:
+                pa = p.split("=")
+                k = pa[0].lower()
+                v = pa[1]
+                set_option(k, v)
+            else:
+                set_option(p)
+        else:
+            new_argv.append(arg)
+
+    return new_argv
+
+
+def process_options():
+    # do log first
+    for k in OPTIONS_TABLE:
+        if k == "log":
+            numeric_level = OPTIONS_TABLE[k]
+            if not isinstance(numeric_level, int):
+                raise ValueError("Invalid log level: %s" % numeric_level)
+            logging.basicConfig(level=numeric_level)
+            sdm_util.log_message("Set log level to %s" % numeric_level)
+
+    for k in OPTIONS_TABLE:
+        if k == "backend":
+            _backend = OPTIONS_TABLE[k]
+            sdm_util.log_message("Set backend to %s" % _backend)
+
+            global backend
+            backend = _backend
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    _fill_commands_table()
+    fill_options_table()
+    fill_commands_table()
+
+    argv = extract_options(argv)
+    process_options()
 
     if len(argv) >= 1:
         # has command part
@@ -446,7 +501,7 @@ def main(argv=None):
         try:
             run(command, oargs)
         except Exception, e:
-            print >> sys.stderr, e
+            sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
             traceback.print_exc()
     else:
         show_help()
