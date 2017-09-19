@@ -16,7 +16,9 @@
 """
 
 import logging
+import os
 
+from os.path import expanduser
 
 class LogLevel(object):
     DEBUG = 9
@@ -54,3 +56,6 @@ def print_message(message, dolog=False, level=LogLevel.INFO):
         log_message(message, level)
 
     print message
+
+def get_abs_path(path):
+    return os.path.abspath(expanduser(path).strip())

@@ -20,10 +20,6 @@ import os.path
 import hashlib
 import backends as sdm_backends
 
-from os.path import expanduser
-
-MOUNT_TABLE_PATH = "~/.sdm/sdm_mtab"
-
 
 class MountTableException(Exception):
     pass
@@ -40,7 +36,7 @@ class MountRecord(object):
     """
     def __init__(self, record_id="", dataset="", mount_path="", backend=sdm_backends.Backends.FUSE, status=MountRecordStatus.UNMOUNTED):
         self.dataset = dataset.strip().lower()
-        self.mount_path = os.path.abspath(expanduser(mount_path.strip()))
+        self.mount_path = mount_path.strip()
 
         if record_id:
             self.record_id = record_id.strip().lower()
@@ -86,28 +82,26 @@ class MountTable(object):
     """
     Manage SDM mount table
     """
-    def __init__(self, path=MOUNT_TABLE_PATH):
+    def __init__(self, path):
         self.table = []
         try:
             self.load_table(path)
         except IOError:
             self.save_table(path)
 
-    def load_table(self, path=MOUNT_TABLE_PATH):
-        abs_path = os.path.abspath(expanduser(path).strip())
+    def load_table(self, path):
         self.table = []
-        with open(abs_path, 'r') as f:
+        with open(path, 'r') as f:
             for line in f:
                 record = MountRecord.from_line(line)
                 self.table.append(record)
 
-    def save_table(self, path=MOUNT_TABLE_PATH):
-        abs_path = os.path.abspath(expanduser(path).strip())
-        parent = os.path.dirname(abs_path)
+    def save_table(self, path):
+        parent = os.path.dirname(path)
         if not os.path.exists(parent):
             os.makedirs(parent, 0755)
 
-        with open(abs_path, 'w') as f:
+        with open(path, 'w') as f:
             for record in self.table:
                 line = record.to_line()
                 f.write(line + "\n")
@@ -138,11 +132,9 @@ class MountTable(object):
         return records
 
     def get_records_by_mount_path(self, mount_path):
-        abs_mount_path = os.path.abspath(expanduser(mount_path.strip()))
-
         records = []
         for record in self.table:
-            if record.mount_path == abs_mount_path:
+            if record.mount_path == mount_path:
                 records.append(record)
         return records
 

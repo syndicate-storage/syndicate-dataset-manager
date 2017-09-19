@@ -26,12 +26,15 @@ import repository as sdm_repository
 import backends as sdm_backends
 import util as sdm_util
 
-from os.path import expanduser
 from prettytable import PrettyTable
 
+SDM_CONFIG_DIR = "~/.sdm"
+ABS_SDM_CONFIG_DIR = sdm_util.get_abs_path(SDM_CONFIG_DIR)
+CONFIG_PATH = "%s/sdm.conf" % ABS_SDM_CONFIG_DIR
+MOUNT_TABLE_PATH = "%s/sdm_mtab" % ABS_SDM_CONFIG_DIR
 
-config = sdm_config.Config()
-mount_table = sdm_mount_table.MountTable()
+config = sdm_config.Config(CONFIG_PATH)
+mount_table = sdm_mount_table.MountTable(MOUNT_TABLE_PATH)
 repository = sdm_repository.Repository(config.repo_url)
 backend = config.default_backend
 
@@ -117,7 +120,7 @@ def show_mounts(argv):
         sdm_util.print_message(tbl)
 
         if need_sync:
-            mount_table.save_table()
+            mount_table.save_table(MOUNT_TABLE_PATH)
 
         if cnt == 0:
             sdm_util.print_message("No mounts")
@@ -156,7 +159,7 @@ def process_mount_dataset(dataset, mount_path):
                     mount_table.delete_record(rec.record_id)
 
             mount_record = mount_table.add_record(dataset, mount_path, backend, sdm_mount_table.MountRecordStatus.UNMOUNTED)
-            mount_table.save_table()
+            mount_table.save_table(MOUNT_TABLE_PATH)
 
             bimpl = sdm_backends.Backends.get_backend_instance(backend, config.get_backend_config(backend))
             bimpl.mount(
@@ -169,7 +172,7 @@ def process_mount_dataset(dataset, mount_path):
                 mount_path
             )
             mount_record.status = sdm_mount_table.MountRecordStatus.MOUNTED
-            mount_table.save_table()
+            mount_table.save_table(MOUNT_TABLE_PATH)
             return 0
         except sdm_mount_table.MountTableException, e:
             sdm_util.print_message("Cannot mount dataset - %s to  %s" % (dataset, mount_path), True, sdm_util.LogLevel.ERROR)
@@ -201,7 +204,7 @@ def mount_dataset(argv):
                 if len(mount_path) == 0:
                     mount_path = "/"
 
-            abs_mount_path = os.path.abspath(expanduser(mount_path))
+            abs_mount_path = sdm_util.get_abs_path(mount_path)
             return process_mount_dataset(dataset, abs_mount_path)
         else:
             sdm_util.print_message("Not implemented yet")
@@ -224,7 +227,7 @@ def mount_multi_dataset(argv):
                     dataset
                 )
 
-                abs_mount_path = os.path.abspath(expanduser(mount_path))
+                abs_mount_path = sdm_util.get_abs_path(mount_path)
                 res |= process_mount_dataset(dataset, abs_mount_path)
             else:
                 sdm_util.print_message("Not implemented yet")
@@ -251,7 +254,7 @@ def process_unmount_dataset(record_id, cleanup=False):
             if cleanup:
                 mount_table.delete_record(record.record_id)
 
-            mount_table.save_table()
+            mount_table.save_table(MOUNT_TABLE_PATH)
             return 0
         else:
             sdm_util.print_message("Cannot unmount. There are %d mounts" % len(records))
@@ -274,33 +277,38 @@ def unmount_dataset(argv):
         if len(argv) >= 2:
             cleanup = bool(argv[1])
 
-        if len(mount_table.get_records_by_dataset(argv[0])) > 0:
-            # dataset
-            records = mount_table.get_records_by_dataset(argv[0])
+        arg = argv[0]
+
+        # dataset?
+        records = mount_table.get_records_by_dataset(arg)
+        if len(records) > 0:
+
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id, cleanup)
             else:
                 sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                 return 1
-        elif len(mount_table.get_records_by_mount_path(argv[0])) > 0:
-            # maybe path?
-            records = mount_table.get_records_by_mount_path(argv[0])
+
+        # record_id?
+        records = mount_table.get_records_by_record_id(arg)
+        if len(records) > 0:
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id, cleanup)
             else:
                 sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                 return 1
-        elif len(mount_table.get_records_by_record_id(argv[0])) > 0:
-            # maybe record_id?
-            records = mount_table.get_records_by_record_id(argv[0])
+
+        # path?
+        records = mount_table.get_records_by_mount_path(arg)
+        if len(records) > 0:
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id, cleanup)
             else:
                 sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                 return 1
-        else:
-            sdm_util.print_message("Cannot find mount - %s" % argv[0])
-            return 1
+
+        sdm_util.print_message("Cannot find mount - %s" % argv[0])
+        return 1
     else:
         show_help(["unmount"])
         return 1
@@ -313,33 +321,42 @@ def unmount_multi_dataset(argv):
         cleanup = False
         res = 0
         for arg in argv:
-            if len(mount_table.get_records_by_dataset(arg)) > 0:
-                # dataset
-                records = mount_table.get_records_by_dataset(arg)
+            # dataset?
+            records = mount_table.get_records_by_dataset(arg)
+            if len(records) > 0:
                 if len(records) == 1:
                     res |= process_unmount_dataset(records[0].record_id, cleanup)
+                    continue
                 else:
                     sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                     res |= 1
-            elif len(mount_table.get_records_by_mount_path(arg)) > 0:
-                # maybe path?
-                records = mount_table.get_records_by_mount_path(arg)
+                    continue
+
+            # record_id?
+            records = mount_table.get_records_by_record_id(arg)
+            if len(records) > 0:
                 if len(records) == 1:
                     res |= process_unmount_dataset(records[0].record_id, cleanup)
+                    continue
                 else:
                     sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                     res |= 1
-            elif len(mount_table.get_records_by_record_id(arg)) > 0:
-                # maybe record_id?
-                records = mount_table.get_records_by_record_id(arg)
+                    continue
+
+            # path?
+            path = sdm_util.get_abs_path(arg)
+            records = mount_table.get_records_by_mount_path(path)
+            if len(records) > 0:
                 if len(records) == 1:
                     res |= process_unmount_dataset(records[0].record_id, cleanup)
+                    continue
                 else:
                     sdm_util.print_message("Cannot unmount dataset. There are more %d mounts" % len(records))
                     res |= 1
-            else:
-                sdm_util.print_message("Cannot find mount - %s" % arg)
-                res |= 1
+                    continue
+
+            sdm_util.print_message("Cannot find mount - %s" % arg)
+            res |= 1
         return res
     else:
         show_help(["unmount"])

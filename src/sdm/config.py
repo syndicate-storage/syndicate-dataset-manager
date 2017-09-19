@@ -21,10 +21,6 @@ import json
 import syndicate_user as sdm_syndicate_user
 import backends as sdm_backends
 
-from os.path import expanduser
-
-CONFIG_PATH = "~/.sdm/sdm.conf"
-
 DEFAULT_REPO_URL = "https://butler.opencloud.cs.arizona.edu/sdm/catalogue"
 DEFAULT_BACKEND = sdm_backends.Backends.FUSE
 
@@ -33,7 +29,7 @@ class Config(object):
     """
     Manage SDM config
     """
-    def __init__(self, path=CONFIG_PATH):
+    def __init__(self, path):
         self.repo_url = DEFAULT_REPO_URL
         self.default_backend = DEFAULT_BACKEND
         self.backend_configs = sdm_backends.Backends.get_default_backend_configs()
@@ -78,21 +74,19 @@ class Config(object):
                     user = sdm_syndicate_user.SyndicateUser.from_dict(syndicate_user)
                     self.add_syndicate_user(user)
 
-    def load_config(self, path=CONFIG_PATH):
-        abs_path = os.path.abspath(expanduser(path).strip())
+    def load_config(self, path):
         conf = {}
-        with open(abs_path, 'r') as f:
+        with open(path, 'r') as f:
             conf = json.load(f)
 
         self._load(conf)
 
-    def save_config(self, path=CONFIG_PATH):
-        abs_path = os.path.abspath(expanduser(path).strip())
-        parent = os.path.dirname(abs_path)
+    def save_config(self, path):
+        parent = os.path.dirname(path)
         if not os.path.exists(parent):
             os.makedirs(parent, 0755)
 
-        with open(abs_path, 'w') as f:
+        with open(path, 'w') as f:
             conf = self._save()
             json.dump(conf, f, sort_keys=True, indent=4, separators=(',', ': '))
 
