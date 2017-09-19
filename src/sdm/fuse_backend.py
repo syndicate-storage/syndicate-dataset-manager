@@ -24,7 +24,7 @@ import subprocess
 import tempfile
 import shlex
 import shutil
-import backends as sdm_backends
+import abstract_backend as sdm_absbackends
 import util as sdm_util
 
 from os.path import expanduser
@@ -37,33 +37,30 @@ SYNDICATEFS_PROCESS_NAME = "syndicatefs"
 SYNDICATE_CONFIG_ROOT_PATH = "~/.sdm/mounts/"
 
 
-class FuseBackendConfig(object):
+class FuseBackendException(sdm_absbackends.AbstractBackendException):
+    pass
+
+
+class FuseBackendConfig(sdm_absbackends.AbstractBackendConfig):
     """
     FUSE Backend Config
     """
-    def __init__(self,
-                 default_mount_path=DEFAULT_MOUNT_PATH,
-                 syndicate_debug_mode=DEFAULT_SYNDICATE_DEBUG_MODE,
-                 syndicate_debug_level=DEFAULT_SYNDICATE_DEBUG_LEVEL):
-        self.default_mount_path = default_mount_path
-        self.syndicate_debug_mode = syndicate_debug_mode
-        self.syndicate_debug_level = syndicate_debug_level
+    def __init__(self):
+        self.default_mount_path = DEFAULT_MOUNT_PATH
+        self.syndicate_debug_mode = DEFAULT_SYNDICATE_DEBUG_MODE
+        self.syndicate_debug_level = DEFAULT_SYNDICATE_DEBUG_LEVEL
 
     @classmethod
     def from_dict(cls, d):
-        return FuseBackendConfig(
-            d["default_mount_path"],
-            d["syndicate_debug_mode"],
-            d["syndicate_debug_level"]
-        )
+        config = FuseBackendConfig()
+        config.default_mount_path = d["default_mount_path"]
+        config.syndicate_debug_mode = d["syndicate_debug_mode"]
+        config.syndicate_debug_level = d["syndicate_debug_level"]
+        return config
 
     @classmethod
     def get_default_config(cls):
-        return FuseBackendConfig(
-            DEFAULT_MOUNT_PATH,
-            DEFAULT_SYNDICATE_DEBUG_MODE,
-            DEFAULT_SYNDICATE_DEBUG_LEVEL
-        )
+        return FuseBackendConfig()
 
     def to_json(self):
         return json.dumps({
@@ -80,12 +77,16 @@ class FuseBackendConfig(object):
             (self.default_mount_path, self.syndicate_debug_mode)
 
 
-class FuseBackend(object):
+class FuseBackend(sdm_absbackends.AbstractBackend):
     """
-    FuseBackend
+    FUSE Backend
     """
     def __init__(self, backend_config):
         self.backend_config = backend_config
+
+    @classmethod
+    def get_name(cls):
+        return "FUSE"
 
     def _get_processes(self, name):
         matching_processes = []
@@ -121,7 +122,7 @@ class FuseBackend(object):
             if len(matching_processes) == 0:
                 trial += 1
                 if trial > retry:
-                    raise sdm_backends.BackendException(
+                    raise FuseBackendException(
                         "cannot find matching process - %s" %
                         SYNDICATEFS_PROCESS_NAME
                     )
@@ -139,7 +140,7 @@ class FuseBackend(object):
             tick += 1
 
             if tick >= timeout:
-                raise sdm_backends.BackendException(
+                raise FuseBackendException(
                     "mount timed out - %s / %s" %
                     (SYNDICATEFS_PROCESS_NAME, mount_path)
                 )
@@ -155,7 +156,7 @@ class FuseBackend(object):
             SYNDICATE_CONFIG_ROOT_PATH.rstrip("/"),
             mount_id.strip().lower()
         )
-        abs_config_root_path = os.path.abspath(expanduser(config_root_path.strip()))
+        abs_config_root_path = sdm_util.get_abs_path(config_root_path)
         return abs_config_root_path
 
     def _make_syndicate_command(self, mount_id, debug_mode=False):
@@ -185,11 +186,11 @@ class FuseBackend(object):
             message = repr(stdout_value)
             rc = proc.poll()
             if rc != 0:
-                raise sdm_backends.BackendException(
+                raise FuseBackendException(
                     "Failed to run an external process - %d : %s" % (rc, message)
                 )
         except subprocess.CalledProcessError as err:
-            raise sdm_backends.BackendException(
+            raise FuseBackendException(
                 "> error code: %d, %s" % (err.returncode, err.output)
             )
 
@@ -206,7 +207,7 @@ class FuseBackend(object):
             )
 
         except subprocess.CalledProcessError as err:
-            raise sdm_backends.BackendException(
+            raise FuseBackendException(
                 "> error code: %d, %s" % (err.returncode, err.output)
             )
 
@@ -271,7 +272,7 @@ class FuseBackend(object):
     def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path, debug_mode=False, debug_level=1):
         sdm_util.log_message("Mounting syndicatefs, %s to %s" % (dataset, mount_path))
 
-        abs_mount_path = os.path.abspath(expanduser(mount_path.strip()))
+        abs_mount_path = sdm_util.get_abs_path(mount_path)
         if not os.path.exists(abs_mount_path):
             os.makedirs(abs_mount_path, 0755)
 
@@ -289,25 +290,26 @@ class FuseBackend(object):
 
         self._run_command_background(command_mount, syndicatefs_log_path)
         self._wait_mount(abs_mount_path, retry=3)
-        sdm_util.print_message("Successfully mounted syndicatefs, %s to %s" % (dataset, abs_mount_path), True)
+        sdm_util.log_message("Successfully mounted syndicatefs, %s to %s" % (dataset, abs_mount_path))
 
     def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, force=False):
+        sdm_util.print_message("Mounting a dataset %s to %s" % (dataset, mount_path), True)
         self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host, self.backend_config.syndicate_debug_mode, force)
         self._mount_syndicatefs(mount_id, dataset, gateway_name, mount_path, self.backend_config.syndicate_debug_mode, self.backend_config.syndicate_debug_level)
+        sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
 
-    def check_mount(self, mount_path):
-        abs_mount_path = os.path.abspath(expanduser(mount_path.strip()))
+    def check_mount(self, mount_id, dataset, mount_path):
         try:
-            self._wait_mount(abs_mount_path)
+            self._wait_mount(mount_path)
             return True
-        except sdm_backends.BackendException, e:
+        except FuseBackendException, e:
             return False
 
-    def unmount(self, mount_id, mount_path, cleanup=False):
+    def unmount(self, mount_id, dataset, mount_path, cleanup=False):
         try:
             command_unmount = "fusermount -u %s" % mount_path
             self._run_command_foreground(command_unmount)
-        except sdm_backends.BackendException, e:
+        except FuseBackendException, e:
             if "not found" in str(e):
                 # it's already unmounted - skip
                 pass
@@ -318,4 +320,4 @@ class FuseBackend(object):
             # clean up
             config_root_path = self._make_syndicate_configuration_root_path(mount_id)
             shutil.rmtree(config_root_path)
-        sdm_util.print_message("Successfully unmounted syndicatefs, %s" % (mount_path), True)
+        sdm_util.print_message("Successfully unmounted a dataset %s from %s" % (dataset, mount_path), True)

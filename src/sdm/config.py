@@ -22,7 +22,7 @@ import syndicate_user as sdm_syndicate_user
 import backends as sdm_backends
 
 DEFAULT_REPO_URL = "https://butler.opencloud.cs.arizona.edu/sdm/catalogue"
-DEFAULT_BACKEND = sdm_backends.Backends.FUSE
+DEFAULT_BACKEND = sdm_backends.Backends.get_backend_name("FUSE")
 
 
 class Config(object):
@@ -62,11 +62,11 @@ class Config(object):
             if k == "repo_url":
                 self.repo_url = conf[k].strip()
             elif k == "default_backend":
-                self.default_backend = sdm_backends.Backends.from_str(conf[k])
+                self.default_backend = sdm_backends.Backends.get_backend_name(conf[k])
             elif k == "backend_configs":
                 for bk in conf[k].keys():
                     bc = conf[k][bk]
-                    backend = sdm_backends.Backends.from_str(bk)
+                    backend = sdm_backends.Backends.get_backend_name(bk)
                     backend_config = sdm_backends.Backends.objectfy_backend_config_from_dict(backend, bc)
                     self.add_backend_config(backend, backend_config)
             elif k == "syndicate_users":

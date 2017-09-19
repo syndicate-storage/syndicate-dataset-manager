@@ -19,63 +19,76 @@ import fuse_backend as sdm_fuse_backend
 import rest_backend as sdm_rest_backend
 
 
+backends_impl = []
+backends_impl_map = {}
+
+# name, class, config_class,
+backends_impl.append(
+    (
+        sdm_fuse_backend.FuseBackend.get_name().strip().lower(),
+        sdm_fuse_backend.FuseBackend,
+        sdm_fuse_backend.FuseBackendConfig
+    )
+)
+backends_impl.append(
+    (
+        sdm_rest_backend.RestBackend.get_name().strip().lower(),
+        sdm_rest_backend.RestBackend,
+        sdm_rest_backend.RestBackendConfig
+    )
+)
+
+for impl in backends_impl:
+    _n, _c, _cc = impl
+    backends_impl_map[_n] = impl
+
+
+def _get_backend(name):
+    if name.strip().lower() in backends_impl_map:
+         return backends_impl_map[name.strip().lower()]
+    else:
+        raise UnknownBackend("unknown backend - %s" % name)
+
+
 class UnknownBackend(Exception):
     pass
 
 
-class BackendException(Exception):
-    pass
-
-
 class Backends(object):
-    FUSE = "FUSE"
-    REST = "REST"
-
     @classmethod
-    def from_str(cls, name):
-        if name.strip().lower() == "fuse":
-            return cls.FUSE
-        elif name.strip().lower() == "rest":
-            return cls.REST
-        else:
-            raise UnknownBackend("unknown backend - %s" % name)
+    def get_backend_name(cls, name):
+        _n, _, _ = _get_backend(name)
+        return _n
 
     @classmethod
     def get_backend_instance(cls, backend, backend_config):
-        if backend == cls.FUSE:
-            return sdm_fuse_backend.FuseBackend(backend_config)
-        elif backend == cls.REST:
-            return sdm_rest_backend.RestBackend(backend_config)
+        _, _c, _ = _get_backend(backend)
+        return _c(backend_config)
 
     @classmethod
     def get_backend_class(cls, backend):
-        if backend == cls.FUSE:
-            return sdm_fuse_backend.FuseBackend
-        elif backend == cls.REST:
-            return sdm_rest_backend.RestBackend
+        _, _c, _ = _get_backend(backend)
+        return _c
 
     @classmethod
     def get_backend_config_instance(cls, backend):
-        if backend == cls.FUSE:
-            return sdm_fuse_backend.FuseBackendConfig()
-        elif backend == cls.REST:
-            return sdm_rest_backend.RestBackendConfig()
+        _, _, _cc = _get_backend(backend)
+        return _cc()
 
     @classmethod
     def get_backend_config_class(cls, backend):
-        if backend == cls.FUSE:
-            return sdm_fuse_backend.FuseBackendConfig
-        elif backend == cls.REST:
-            return sdm_rest_backend.RestBackendConfig
+        _, _, _cc = _get_backend(backend)
+        return _cc
 
     @classmethod
     def get_default_backend_configs(cls):
         configs = {}
-        for b in [Backends.FUSE, Backends.REST]:
-            configs[b] = Backends.get_backend_config_class(b).get_default_config()
+        for impl in backends_impl:
+            _n, _c, _cc = impl
+            configs[_n] = _cc.get_default_config()
 
         return configs
 
     @classmethod
     def objectfy_backend_config_from_dict(cls, backend, d):
-        return Backends.get_backend_config_class(backend).from_dict(d)
+        return cls.get_backend_config_class(backend).from_dict(d)

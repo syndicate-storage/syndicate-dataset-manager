@@ -45,7 +45,7 @@ COMMANDS_TABLE = {}
 
 def fill_options_table():
     OPTIONS_TABLE["log"] = getattr(logging, "WARNING", None)
-    OPTIONS_TABLE["backend"] = sdm_backends.Backends.FUSE
+    OPTIONS_TABLE["backend"] = sdm_backends.Backends.get_backend_name("FUSE")
 
 
 def fill_commands_table():
@@ -104,7 +104,7 @@ def show_mounts(argv):
             # detect out-of-sync record
             bimpl = sdm_backends.Backends.get_backend_instance(rec.backend, config.get_backend_config(rec.backend))
 
-            is_mounted = bimpl.check_mount(rec.mount_path)
+            is_mounted = bimpl.check_mount(rec.record_id, rec.dataset, rec.mount_path)
             is_status_mounted = rec.status == sdm_mount_table.MountRecordStatus.MOUNTED
 
             if is_mounted != is_status_mounted:
@@ -178,7 +178,7 @@ def process_mount_dataset(dataset, mount_path):
             sdm_util.print_message("Cannot mount dataset - %s to  %s" % (dataset, mount_path), True, sdm_util.LogLevel.ERROR)
             sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
             return 1
-        except sdm_backends.BackendException, e:
+        except sdm_absbackends.AbstractBackendException, e:
             sdm_util.print_message("Cannot mount dataset - %s to  %s" % (dataset, mount_path), True, sdm_util.LogLevel.ERROR)
             sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
             return 1
@@ -193,7 +193,7 @@ def mount_dataset(argv):
     # 2. mount_path (optional)
     if len(argv) >= 1:
         dataset = argv[0].strip().lower()
-        if backend == sdm_backends.Backends.FUSE:
+        if backend == sdm_backends.Backends.get_backend_name("FUSE"):
             mount_path = "%s/%s" % (
                 config.get_backend_config(backend).default_mount_path.rstrip("/"),
                 dataset
@@ -221,7 +221,7 @@ def mount_multi_dataset(argv):
         res = 0
         for d in argv:
             dataset = d.strip().lower()
-            if backend == sdm_backends.Backends.FUSE:
+            if backend == sdm_backends.Backends.get_backend_name("FUSE"):
                 mount_path = "%s/%s" % (
                     config.get_backend_config(backend).default_mount_path.rstrip("/"),
                     dataset
@@ -250,7 +250,7 @@ def process_unmount_dataset(record_id, cleanup=False):
             bimpl = sdm_backends.Backends.get_backend_instance(record.backend, config.get_backend_config(record.backend))
             record.status = sdm_mount_table.MountRecordStatus.UNMOUNTED
 
-            bimpl.unmount(record.record_id, record.mount_path, cleanup)
+            bimpl.unmount(record.record_id, record.dataset, record.mount_path, cleanup)
             if cleanup:
                 mount_table.delete_record(record.record_id)
 
@@ -263,7 +263,7 @@ def process_unmount_dataset(record_id, cleanup=False):
         sdm_util.print_message("Cannot unmount - %s" % (record_id), True, sdm_util.LogLevel.ERROR)
         sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
         return 1
-    except sdm_backends.BackendException, e:
+    except sdm_absbackends.AbstractBackendException, e:
         sdm_util.print_message("Cannot unmount - %s" % (record_id), True, sdm_util.LogLevel.ERROR)
         sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
         return 1
@@ -459,7 +459,7 @@ def set_option(k, v="True"):
     if k == "log":
         OPTIONS_TABLE[k] = getattr(logging, v.upper(), None)
     elif k == "backend":
-        OPTIONS_TABLE[k] = sdm_backends.Backends.from_str(v)
+        OPTIONS_TABLE[k] = sdm_backends.Backends.get_backend_name(v)
 
 
 def extract_options(argv):

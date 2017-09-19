@@ -34,7 +34,7 @@ class MountRecord(object):
     """
     mount table record
     """
-    def __init__(self, record_id="", dataset="", mount_path="", backend=sdm_backends.Backends.FUSE, status=MountRecordStatus.UNMOUNTED):
+    def __init__(self, dataset, mount_path, backend, status=MountRecordStatus.UNMOUNTED, record_id=""):
         self.dataset = dataset.strip().lower()
         self.mount_path = mount_path.strip()
 
@@ -61,9 +61,9 @@ class MountRecord(object):
             record_id = fields[0].strip()
             dataset = fields[1].strip()
             mount_path = fields[2].strip()
-            backend = sdm_backends.Backends.from_str(fields[3].strip())
+            backend = sdm_backends.Backends.get_backend_name(fields[3].strip())
             status = fields[4].strip()
-            return MountRecord(record_id, dataset, mount_path, backend, status)
+            return MountRecord(dataset, mount_path, backend, status, record_id)
         else:
             raise MountTableException("unrecognized format - %s" % line)
 
@@ -153,7 +153,7 @@ class MountTable(object):
         return records
 
     def add_record(self, dataset, mount_path, backend, status):
-        record = MountRecord(dataset=dataset, mount_path=mount_path, backend=backend, status=status)
+        record = MountRecord(dataset, mount_path, backend, status)
         exist = False
 
         for r in self.table:

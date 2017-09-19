@@ -16,45 +16,103 @@
 """
 
 import json
+import abstract_backend as sdm_absbackends
+import util as sdm_util
 
-DEFAULT_MOUNT_PATH = "/sdm_mounts/"
-DEFAULT_SYNDICATE_DEBUG_MODE = True
-DEFAULT_SYNDICATE_DEBUG_LEVEL = 3
+DEFAULT_REST_HOSTS = ["localhost:8888"]
 
 
-class RestBackendConfig(object):
+class RestBackendException(sdm_absbackends.AbstractBackendException):
+    pass
+
+
+class RestBackendConfig(sdm_absbackends.AbstractBackendConfig):
     """
     REST Backend Config
     """
-    def __init__(self,
-                 default_mount_path=DEFAULT_MOUNT_PATH):
-        self.default_mount_path = default_mount_path
+    def __init__(self):
+        self.rest_hosts = DEFAULT_REST_HOSTS
 
     @classmethod
     def from_dict(cls, d):
-        return RestBackendConfig(
-            d["default_mount_path"]
-        )
+        config = RestBackendConfig()
+        config.rest_hosts = d["rest_hosts"]
+        return config
 
     @classmethod
     def get_default_config(cls):
-        return RestBackendConfig(
-            DEFAULT_MOUNT_PATH
-        )
+        return RestBackendConfig()
 
     def to_json(self):
         return json.dumps({
-            "default_mount_path": self.default_mount_path
+            "rest_hosts": self.rest_hosts
         })
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<RestBackendConfig %s %s>" % \
-            (self.default_mount_path)
+        return "<RestBackendConfig %s>" % \
+            (self.rest_hosts)
 
 
-class RestBackend(object):
+class RestBackend(sdm_absbackends.AbstractBackend):
+    """
+    REST Backend
+    """
     def __init__(self, backend_config):
         self.backend_config = backend_config
+
+    @classmethod
+    def get_name(cls):
+        return "REST"
+
+    def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, force=False):
+        # check if mount_id already exists
+
+        if force:
+            skip_config = False
+            # delete
+
+        if not skip_config:
+            sdm_util.log_message("Registering a syndicate user, %s" % username)
+            user_pkey_fd, user_pkey_path = tempfile.mkstemp()
+            f = os.fdopen(user_pkey_fd, "w")
+            f.write(user_pkey)
+            f.close()
+
+            try:
+                # register
+                sdm_util.log_message("Successfully registered a syndicate user, %s" % username)
+            finally:
+                os.remove(user_pkey_path)
+
+    def _regist_syndicate_gateway(self, mount_id, dataset, gateway_name):
+        sdm_util.log_message("Registering a syndicate gateway, %s for %s" % (gateway_name, dataset))
+        # mount
+        sdm_util.log_message("Successfully registered a syndicate gateway, %s for %s" % (gateway_name, dataset))
+
+    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, force=False):
+        sdm_util.print_message("Mounting a dataset %s to %s" % (dataset, mount_path), True)
+        self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host, force)
+        self._regist_syndicate_gateway(mount_id, dataset, gateway_name)
+        sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
+
+    def check_mount(self, mount_id, dataset, mount_path):
+        try:
+            # check mount
+            return True
+        except RestBackendException, e:
+            return False
+
+    def unmount(self, mount_id, dataset, mount_path, cleanup=False):
+        try:
+            # unmount
+            pass
+        except RestBackendException, e:
+            raise e
+
+        if cleanup:
+            # clean up
+            pass
+        sdm_util.print_message("Successfully unmounted a dataset %s from %s" % (dataset, mount_path), True)
