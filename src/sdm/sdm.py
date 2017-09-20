@@ -24,6 +24,7 @@ import config as sdm_config
 import mount_table as sdm_mount_table
 import repository as sdm_repository
 import backends as sdm_backends
+import abstract_backend as sdm_absbackends
 import util as sdm_util
 
 from prettytable import PrettyTable
@@ -150,6 +151,11 @@ def process_mount_dataset(dataset, mount_path):
             return 1
 
         try:
+            bimpl = sdm_backends.Backends.get_backend_instance(backend, config.get_backend_config(backend))
+            if not bimpl.is_legal_mount_path(mount_path):
+                sdm_util.print_message("Cannot mount dataset to the given mount path - %s" % (mount_path))
+                return 1
+
             # check existance
             records = mount_table.get_records_by_mount_path(mount_path)
             for rec in records:
@@ -161,7 +167,6 @@ def process_mount_dataset(dataset, mount_path):
             mount_record = mount_table.add_record(dataset, mount_path, backend, sdm_mount_table.MountRecordStatus.UNMOUNTED)
             mount_table.save_table(MOUNT_TABLE_PATH)
 
-            bimpl = sdm_backends.Backends.get_backend_instance(backend, config.get_backend_config(backend))
             bimpl.mount(
                 mount_record.record_id,
                 entry.ms_host,
@@ -193,22 +198,16 @@ def mount_dataset(argv):
     # 2. mount_path (optional)
     if len(argv) >= 1:
         dataset = argv[0].strip().lower()
-        if backend == sdm_backends.Backends.get_backend_name("FUSE"):
-            mount_path = "%s/%s" % (
-                config.get_backend_config(backend).default_mount_path.rstrip("/"),
-                dataset
-            )
+        mount_path = "%s/%s" % (
+            config.get_backend_config(backend).default_mount_path,
+            dataset
+        )
 
-            if len(argv) == 2:
-                mount_path = argv[1].strip().rstrip("/")
-                if len(mount_path) == 0:
-                    mount_path = "/"
+        if len(argv) >= 2 and len(argv[1].strip()) != 0:
+            mount_path = argv[1].strip()
 
-            abs_mount_path = sdm_util.get_abs_path(mount_path)
-            return process_mount_dataset(dataset, abs_mount_path)
-        else:
-            sdm_util.print_message("Not implemented yet")
-            return 1
+        abs_mount_path = sdm_util.get_abs_path(mount_path)
+        return process_mount_dataset(dataset, abs_mount_path)
     else:
         show_help(["mount"])
         return 1
@@ -221,17 +220,13 @@ def mount_multi_dataset(argv):
         res = 0
         for d in argv:
             dataset = d.strip().lower()
-            if backend == sdm_backends.Backends.get_backend_name("FUSE"):
-                mount_path = "%s/%s" % (
-                    config.get_backend_config(backend).default_mount_path.rstrip("/"),
-                    dataset
-                )
+            mount_path = "%s/%s" % (
+                config.get_backend_config(backend).default_mount_path,
+                dataset
+            )
 
-                abs_mount_path = sdm_util.get_abs_path(mount_path)
-                res |= process_mount_dataset(dataset, abs_mount_path)
-            else:
-                sdm_util.print_message("Not implemented yet")
-                return 1
+            abs_mount_path = sdm_util.get_abs_path(mount_path)
+            res |= process_mount_dataset(dataset, abs_mount_path)
         return res
     else:
         show_help(["mmount"])
@@ -282,7 +277,6 @@ def unmount_dataset(argv):
         # dataset?
         records = mount_table.get_records_by_dataset(arg)
         if len(records) > 0:
-
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id, cleanup)
             else:
@@ -299,7 +293,8 @@ def unmount_dataset(argv):
                 return 1
 
         # path?
-        records = mount_table.get_records_by_mount_path(arg)
+        path = sdm_util.get_abs_path(arg)
+        records = mount_table.get_records_by_mount_path(path)
         if len(records) > 0:
             if len(records) == 1:
                 return process_unmount_dataset(records[0].record_id, cleanup)

@@ -25,14 +25,14 @@ backends_impl_map = {}
 # name, class, config_class,
 backends_impl.append(
     (
-        sdm_fuse_backend.FuseBackend.get_name().strip().lower(),
+        sdm_fuse_backend.FuseBackend.get_name(),
         sdm_fuse_backend.FuseBackend,
         sdm_fuse_backend.FuseBackendConfig
     )
 )
 backends_impl.append(
     (
-        sdm_rest_backend.RestBackend.get_name().strip().lower(),
+        sdm_rest_backend.RestBackend.get_name(),
         sdm_rest_backend.RestBackend,
         sdm_rest_backend.RestBackendConfig
     )
@@ -40,12 +40,13 @@ backends_impl.append(
 
 for impl in backends_impl:
     _n, _c, _cc = impl
-    backends_impl_map[_n] = impl
+    backends_impl_map[_n.strip().lower()] = impl
 
 
 def _get_backend(name):
-    if name.strip().lower() in backends_impl_map:
-         return backends_impl_map[name.strip().lower()]
+    backend = name.strip().lower()
+    if backend in backends_impl_map:
+         return backends_impl_map[backend]
     else:
         raise UnknownBackend("unknown backend - %s" % name)
 

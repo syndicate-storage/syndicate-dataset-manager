@@ -29,7 +29,7 @@ import util as sdm_util
 
 from os.path import expanduser
 
-DEFAULT_MOUNT_PATH = "~/sdm_mounts/"
+DEFAULT_MOUNT_PATH = "~/sdm_mounts"
 DEFAULT_SYNDICATE_DEBUG_MODE = True
 DEFAULT_SYNDICATE_DEBUG_LEVEL = 3
 
@@ -87,6 +87,11 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
     @classmethod
     def get_name(cls):
         return "FUSE"
+
+    def is_legal_mount_path(self, mount_path):
+        if os.path.exists(mount_path) and os.path.isdir(mount_path):
+            return True
+        return False
 
     def _get_processes(self, name):
         matching_processes = []

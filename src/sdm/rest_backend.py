@@ -16,10 +16,13 @@
 """
 
 import json
+import urllib
+import urlparse
 import abstract_backend as sdm_absbackends
 import util as sdm_util
 
-DEFAULT_REST_HOSTS = ["localhost:8888"]
+DEFAULT_REST_HOST = "http://localhost:8888"
+DEFAULT_MOUNT_PATH = "hsyn:///"
 
 
 class RestBackendException(sdm_absbackends.AbstractBackendException):
@@ -31,12 +34,14 @@ class RestBackendConfig(sdm_absbackends.AbstractBackendConfig):
     REST Backend Config
     """
     def __init__(self):
-        self.rest_hosts = DEFAULT_REST_HOSTS
+        self.default_mount_path = DEFAULT_MOUNT_PATH
+        self.rest_host = DEFAULT_REST_HOST
 
     @classmethod
     def from_dict(cls, d):
         config = RestBackendConfig()
-        config.rest_hosts = d["rest_hosts"]
+        config.default_mount_path = d["default_mount_path"]
+        config.rest_host = d["rest_host"]
         return config
 
     @classmethod
@@ -45,7 +50,8 @@ class RestBackendConfig(sdm_absbackends.AbstractBackendConfig):
 
     def to_json(self):
         return json.dumps({
-            "rest_hosts": self.rest_hosts
+            "default_mount_path": self.default_mount_path,
+            "rest_host": self.rest_host
         })
 
     def __eq__(self, other):
@@ -53,7 +59,7 @@ class RestBackendConfig(sdm_absbackends.AbstractBackendConfig):
 
     def __repr__(self):
         return "<RestBackendConfig %s>" % \
-            (self.rest_hosts)
+            (self.rest_host)
 
 
 class RestBackend(sdm_absbackends.AbstractBackend):
@@ -67,8 +73,32 @@ class RestBackend(sdm_absbackends.AbstractBackend):
     def get_name(cls):
         return "REST"
 
+    def is_legal_mount_path(self, mount_path):
+        parts = urlparse.urlparse(mount_path)
+
+        if parts.scheme not in self.backend_config.rest_host:
+            return False
+
+        if parts.netloc not in self.backend_config.rest_host:
+            return False
+
+        session_name = self._get_session_name(parts.path)
+        if len(session_name) == 0:
+            return False
+
+        return True
+
+    def _get_session_name(self, mount_path):
+        parts = urlparse.urlparse(mount_path)
+        path = parts.path.lstrip("/")
+        idx = path.find("/")
+        if idx > 0:
+            return path[:idx]
+        return path
+
     def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, force=False):
         # check if mount_id already exists
+        session_name = self._get_session_name(mount_path)
 
         if force:
             skip_config = False
@@ -99,11 +129,16 @@ class RestBackend(sdm_absbackends.AbstractBackend):
         sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
 
     def check_mount(self, mount_id, dataset, mount_path):
+        session_name = self._get_session_name(mount_path)
+
         try:
-            # check mount
-            return True
-        except RestBackendException, e:
-            return False
+            url = "%s/gateway/check?session_name=%s" % (self.backend_config.rest_host, session_name)
+            response = urllib.urlopen(url)
+            content = response.read()
+            result = json.loads(content)
+            return bool(result["result"])
+        except Exception, e:
+            raise RestBackendException("cannot check mount : %s" % e)
 
     def unmount(self, mount_id, dataset, mount_path, cleanup=False):
         try:

@@ -58,4 +58,6 @@ def print_message(message, dolog=False, level=LogLevel.INFO):
     print message
 
 def get_abs_path(path):
+    if "://" in path:
+        return path
     return os.path.abspath(expanduser(path).strip())
