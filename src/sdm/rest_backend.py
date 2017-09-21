@@ -100,6 +100,9 @@ class RestBackend(sdm_absbackends.AbstractBackend):
         # check if mount_id already exists
         session_name = self._get_session_name(mount_path)
 
+        skip_config = False
+        
+
         if force:
             skip_config = False
             # delete

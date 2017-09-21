@@ -41,7 +41,7 @@ class MountRecord(object):
         if record_id:
             self.record_id = record_id.strip().lower()
         else:
-            self.record_id = self._make_record_id(self.dataset, mount_path, backend)
+            self.record_id = self._make_record_id(self.dataset, backend)
 
         self.backend = backend
 
@@ -50,8 +50,8 @@ class MountRecord(object):
         else:
             self.status = MountRecordStatus.UNMOUNTED
 
-    def _make_record_id(self, dataset, mount_path, backend):
-        seed = "seed123%sMountRecord%sBackend%s" % (dataset, mount_path, backend)
+    def _make_record_id(self, dataset, backend):
+        seed = "seed123%sMountRecord%s" % (dataset, backend)
         return hashlib.sha256(seed).hexdigest().lower()
 
     @classmethod
@@ -162,6 +162,10 @@ class MountTable(object):
                 break
 
             if r.mount_path == record.mount_path:
+                exist = True
+                break
+
+            if r.dataset == record.dataset:
                 exist = True
                 break
 
