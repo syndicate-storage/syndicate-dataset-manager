@@ -25,7 +25,8 @@ packages = [
 # dependencies
 dependencies = [
     'prettytable',
-    'psutil'
+    'psutil',
+    'requests'
 ]
 
 setup(

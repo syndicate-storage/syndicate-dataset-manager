@@ -3,11 +3,11 @@ Section: utils
 Priority: optional
 Maintainer: Zack Williams, University of Arizona <zdw@cs.arizona.edu>
 Standards-Version: 3.9.5
-Build-Depends: debhelper (>= 9), pkg-config, python-prettytable, python-psutil, python-setuptools
+Build-Depends: debhelper (>= 9), pkg-config, python-prettytable, python-psutil, python-requests, python-setuptools
 
 Package: syndicate-dataset-manager
 Architecture: all
-Depends:  ${shlibs:Depends}, ${misc:Depends}, python, python-prettytable, python-psutil, syndicate-core, syndicatefs
+Depends:  ${shlibs:Depends}, ${misc:Depends}, python, python-prettytable, python-psutil, python-requests, syndicate-core, syndicatefs
 Description: Syndicate Dataset Manager (SDM)
- Syndicate Dataset Manager (SDM) allows you to mount public datasets 
+ Syndicate Dataset Manager (SDM) allows you to mount public datasets
  on Syndicate easily.
