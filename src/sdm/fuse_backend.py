@@ -89,9 +89,9 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
         return "FUSE"
 
     def is_legal_mount_path(self, mount_path):
-        if os.path.exists(mount_path) and os.path.isdir(mount_path):
-            return True
-        return False
+        if os.path.exists(mount_path) and not os.path.isdir(mount_path):
+            return False
+        return True
 
     def _get_processes(self, name):
         matching_processes = []
