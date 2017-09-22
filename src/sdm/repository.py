@@ -16,8 +16,7 @@
 """
 
 import json
-import urllib
-
+import requests
 
 class RepositoryException(Exception):
     pass
@@ -95,9 +94,8 @@ class Repository(object):
     def load_table(self, url):
         self.table = {}
         try:
-            response = urllib.urlopen(url)
-            content = response.read()
-            ent_arr = json.loads(content)
+            response = requests.get(url)
+            ent_arr = response.json()
             for ent in ent_arr:
                 entry = RepositoryEntry.from_dict(ent)
                 self.table[entry.dataset] = entry
