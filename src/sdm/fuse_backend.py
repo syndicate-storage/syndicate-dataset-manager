@@ -216,7 +216,7 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
                 "> error code: %d, %s" % (err.returncode, err.output)
             )
 
-    def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, debug_mode=False, force=False):
+    def _setup_syndicate(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, debug_mode=False):
         config_root_path = self._make_syndicate_configuration_root_path(mount_id)
         if not os.path.exists(config_root_path):
             os.makedirs(config_root_path, 0755)
@@ -227,15 +227,10 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
             # skip
             skip_config = True
 
-        if force:
-            skip_config = False
-            if os.path.exists(config_path):
-                shutil.rmtree(config_root_path)
-
         syndicate_command = self._make_syndicate_command(mount_id, debug_mode)
 
         if not skip_config:
-            sdm_util.log_message("Registering a syndicate user, %s" % username)
+            sdm_util.log_message("Setting up Syndicate for an user, %s" % username)
             user_pkey_fd, user_pkey_path = tempfile.mkstemp()
             f = os.fdopen(user_pkey_fd, "w")
             f.write(user_pkey)
@@ -250,7 +245,7 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
 
             try:
                 self._run_command_foreground(command_register)
-                sdm_util.log_message("Successfully registered a syndicate user, %s" % username)
+                sdm_util.log_message("Successfully set up Syndicate for an user, %s" % username)
             finally:
                 os.remove(user_pkey_path)
 
@@ -273,6 +268,12 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
         sdm_util.log_message("Successfully reloaded a volume cert, %s" % dataset)
         self._run_command_foreground(command_reload_gatway_cert)
         sdm_util.log_message("Successfully reloaded a gateway cert, %s" % gateway_name)
+
+    def _remove_syndicate_setup(self, mount_id):
+        config_root_path = self._make_syndicate_configuration_root_path(mount_id)
+        if os.path.exists(config_root_path):
+            shutil.rmtree(config_root_path)
+            sdm_util.log_message("Successfully removed Syndicate at %s" % config_root_path)
 
     def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path, debug_mode=False, debug_level=1):
         sdm_util.log_message("Mounting syndicatefs, %s to %s" % (dataset, mount_path))
@@ -297,9 +298,20 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
         self._wait_mount(abs_mount_path, retry=3)
         sdm_util.log_message("Successfully mounted syndicatefs, %s to %s" % (dataset, abs_mount_path))
 
-    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, force=False):
+    def _unmount_syndicatefs(self, mount_path):
+        try:
+            command_unmount = "fusermount -u %s" % mount_path
+            self._run_command_foreground(command_unmount)
+        except FuseBackendException, e:
+            if "not found" in str(e):
+                # it's already unmounted - skip
+                pass
+            else:
+                raise e
+
+    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path):
         sdm_util.print_message("Mounting a dataset %s to %s" % (dataset, mount_path), True)
-        self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host, self.backend_config.syndicate_debug_mode, force)
+        self._setup_syndicate(mount_id, dataset, username, user_pkey, gateway_name, ms_host, self.backend_config.syndicate_debug_mode)
         self._mount_syndicatefs(mount_id, dataset, gateway_name, mount_path, self.backend_config.syndicate_debug_mode, self.backend_config.syndicate_debug_level)
         sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
 
@@ -311,18 +323,10 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
             return False
 
     def unmount(self, mount_id, dataset, mount_path, cleanup=False):
-        try:
-            command_unmount = "fusermount -u %s" % mount_path
-            self._run_command_foreground(command_unmount)
-        except FuseBackendException, e:
-            if "not found" in str(e):
-                # it's already unmounted - skip
-                pass
-            else:
-                raise e
+        sdm_util.print_message("Unmounting a dataset %s mounted at %s" % (dataset, mount_path), True)
+        self._unmount_syndicatefs(mount_path)
 
         if cleanup:
-            # clean up
-            config_root_path = self._make_syndicate_configuration_root_path(mount_id)
-            shutil.rmtree(config_root_path)
-        sdm_util.print_message("Successfully unmounted a dataset %s from %s" % (dataset, mount_path), True)
+            self._remove_syndicate_setup(mount_id)
+
+        sdm_util.print_message("Successfully unmounted a dataset %s mounted at %s" % (dataset, mount_path), True)

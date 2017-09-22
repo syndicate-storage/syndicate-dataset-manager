@@ -50,7 +50,7 @@ class AbstractBackend(object):
         pass
 
     @abstractmethod
-    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, force=False):
+    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path):
         pass
 
     @abstractmethod

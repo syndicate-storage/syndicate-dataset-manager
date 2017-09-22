@@ -16,7 +16,7 @@
 """
 
 import json
-import urllib
+import requests
 import urlparse
 import abstract_backend as sdm_absbackends
 import util as sdm_util
@@ -96,16 +96,31 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             return path[:idx]
         return path
 
-    def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, force=False):
+    def _check_syndicate_user(self, mount_id):
+        try:
+            url = "%s/user/check?mount_id=%s" % (self.backend_config.rest_host, mount_id)
+            response = requests.get(url)
+            result = response.json()
+            return bool(result["result"])
+        except Exception, e:
+            raise RestBackendException("cannot check user : %s" % e)
+
+    def _delete_syndicate_user(self, mount_id):
+        try:
+            url = "%s/user/delete?mount_id=%s" % (self.backend_config.rest_host, mount_id)
+            response = requests.delete(url)
+            result = response.json()
+            return bool(result["result"])
+        except Exception, e:
+            raise RestBackendException("cannot delete user : %s" % e)
+
+    def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host):
         # check if mount_id already exists
-        session_name = self._get_session_name(mount_path)
-
         skip_config = False
-        
+        if self._check_syndicate_user(mount_id):
+            skip_config = True
 
-        if force:
-            skip_config = False
-            # delete
+        session_name = self._get_session_name(mount_path)
 
         if not skip_config:
             sdm_util.log_message("Registering a syndicate user, %s" % username)
@@ -125,32 +140,33 @@ class RestBackend(sdm_absbackends.AbstractBackend):
         # mount
         sdm_util.log_message("Successfully registered a syndicate gateway, %s for %s" % (gateway_name, dataset))
 
-    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path, force=False):
+    def _check_syndicate_gateway(self, session_name):
+        try:
+            url = "%s/gateway/check?session_name=%s" % (self.backend_config.rest_host, session_name)
+            response = requests.get(url)
+            result = response.json()
+            return bool(result["result"])
+        except Exception, e:
+            raise RestBackendException("cannot check mount : %s" % e)
+
+    def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path):
         sdm_util.print_message("Mounting a dataset %s to %s" % (dataset, mount_path), True)
-        self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host, force)
+        self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host)
         self._regist_syndicate_gateway(mount_id, dataset, gateway_name)
         sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
 
     def check_mount(self, mount_id, dataset, mount_path):
         session_name = self._get_session_name(mount_path)
-
         try:
-            url = "%s/gateway/check?session_name=%s" % (self.backend_config.rest_host, session_name)
-            response = urllib.urlopen(url)
-            content = response.read()
-            result = json.loads(content)
-            return bool(result["result"])
-        except Exception, e:
-            raise RestBackendException("cannot check mount : %s" % e)
+            return self._check_syndicate_gateway(session_name)
+        except RestBackendException, e:
+            return False
 
     def unmount(self, mount_id, dataset, mount_path, cleanup=False):
-        try:
-            # unmount
-            pass
-        except RestBackendException, e:
-            raise e
+        sdm_util.print_message("Unmounting a dataset %s mounted at %s" % (dataset, mount_path), True)
+        self._unregist_syndicate_gateway(mount_id)
 
         if cleanup:
-            # clean up
-            pass
-        sdm_util.print_message("Successfully unmounted a dataset %s from %s" % (dataset, mount_path), True)
+            self._unregist_syndicate_user(mount_id)
+
+        sdm_util.print_message("Successfully unmounted a dataset %s mounted at %s" % (dataset, mount_path), True)
