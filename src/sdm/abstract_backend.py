@@ -46,6 +46,10 @@ class AbstractBackend(object):
         pass
 
     @abstractmethod
+    def make_default_mount_path(self, dataset, default_mount_path):
+        pass
+
+    @abstractmethod
     def is_legal_mount_path(self, mount_path):
         pass
 

@@ -46,7 +46,6 @@ COMMANDS_TABLE = {}
 
 def fill_options_table():
     OPTIONS_TABLE["log"] = getattr(logging, "WARNING", None)
-    OPTIONS_TABLE["backend"] = sdm_backends.Backends.get_backend_name("FUSE")
 
 
 def fill_commands_table():
@@ -153,7 +152,7 @@ def process_mount_dataset(dataset, mount_path):
         try:
             bimpl = sdm_backends.Backends.get_backend_instance(backend, config.get_backend_config(backend))
             if not bimpl.is_legal_mount_path(mount_path):
-                sdm_util.print_message("Cannot mount dataset to the given mount path - %s" % (mount_path))
+                sdm_util.print_message("Cannot mount dataset to the given mount path for wrong mount path - %s" % (mount_path))
                 return 1
 
             # check existance
@@ -198,16 +197,20 @@ def mount_dataset(argv):
     # 2. mount_path (optional)
     if len(argv) >= 1:
         dataset = argv[0].strip().lower()
-        mount_path = "%s/%s" % (
-            config.get_backend_config(backend).default_mount_path,
-            dataset
-        )
 
-        if len(argv) >= 2 and len(argv[1].strip()) != 0:
-            mount_path = argv[1].strip()
+        try:
+            bimpl = sdm_backends.Backends.get_backend_instance(backend, config.get_backend_config(backend))
+            mount_path = bimpl.make_default_mount_path(dataset, config.get_backend_config(backend).default_mount_path)
 
-        abs_mount_path = sdm_util.get_abs_path(mount_path)
-        return process_mount_dataset(dataset, abs_mount_path)
+            if len(argv) >= 2 and len(argv[1].strip()) != 0:
+                mount_path = argv[1].strip()
+
+            abs_mount_path = sdm_util.get_abs_path(mount_path)
+            return process_mount_dataset(dataset, abs_mount_path)
+        except sdm_absbackends.AbstractBackendException, e:
+            sdm_util.print_message("Cannot mount dataset - %s" % dataset, True, sdm_util.LogLevel.ERROR)
+            sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
+            return 1
     else:
         show_help(["mount"])
         return 1
@@ -217,17 +220,21 @@ def mount_multi_dataset(argv):
     # args
     # 1. dataset name
     if len(argv) >= 1:
-        res = 0
-        for d in argv:
-            dataset = d.strip().lower()
-            mount_path = "%s/%s" % (
-                config.get_backend_config(backend).default_mount_path,
-                dataset
-            )
+        try:
+            bimpl = sdm_backends.Backends.get_backend_instance(backend, config.get_backend_config(backend))
 
-            abs_mount_path = sdm_util.get_abs_path(mount_path)
-            res |= process_mount_dataset(dataset, abs_mount_path)
-        return res
+            for d in argv:
+                dataset = d.strip().lower()
+                mount_path = bimpl.make_default_mount_path(dataset, config.get_backend_config(backend).default_mount_path)
+                abs_mount_path = sdm_util.get_abs_path(mount_path)
+                res = process_mount_dataset(dataset, abs_mount_path)
+                if res > 0:
+                    return res
+            return 0
+        except sdm_absbackends.AbstractBackendException, e:
+            sdm_util.print_message("Cannot mount dataset - %s" % dataset, True, sdm_util.LogLevel.ERROR)
+            sdm_util.print_message(e, True, sdm_util.LogLevel.ERROR)
+            return 1
     else:
         show_help(["mmount"])
         return 1

@@ -93,6 +93,18 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
             return False
         return True
 
+    def make_default_mount_path(self, dataset, default_mount_path):
+        mount_path = "%s/%s" % (
+            default_mount_path,
+            dataset.strip().lower()
+        )
+
+        abs_mount_path = sdm_util.get_abs_path(mount_path)
+        if not abs_mount_path.startswith("/"):
+            raise FuseBackendException( "cannot make default mount path for %s" % dataset)
+
+        return abs_mount_path
+
     def _get_processes(self, name):
         matching_processes = []
         for p in psutil.process_iter():
@@ -289,9 +301,9 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
         #${SYNDICATEFS_CMD} -f -u ANONYMOUS -v ${VOLUME_NAME} -g ${UG_NAME} ${SYNDICATEFS_DATASET_MOUNT_DIR} &> /tmp/syndicate_${VOLUME_NAME}.log&
         command_mount = "%s -f -u ANONYMOUS -v %s -g %s %s" % (
             syndicatefs_command,
-            dataset.strip().lower(),
-            gateway_name.strip().lower(),
-            abs_mount_path.strip()
+            dataset,
+            gateway_name,
+            abs_mount_path
         )
 
         self._run_command_background(command_mount, syndicatefs_log_path)
