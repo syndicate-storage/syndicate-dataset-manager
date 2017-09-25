@@ -21,6 +21,8 @@ import urlparse
 import abstract_backend as sdm_absbackends
 import util as sdm_util
 
+requests.packages.urllib3.disable_warnings()
+
 DEFAULT_REST_HOST = "http://localhost:8888"
 DEFAULT_MOUNT_PATH = "hsyn:///"
 
