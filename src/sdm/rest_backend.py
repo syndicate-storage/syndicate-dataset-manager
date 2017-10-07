@@ -23,7 +23,7 @@ import tempfile
 import abstract_backend as sdm_absbackends
 import util as sdm_util
 
-DEFAULT_REST_HOST = "http://localhost:8888"
+DEFAULT_REST_HOSTS = ["http://localhost:8888"]
 DEFAULT_MOUNT_PATH = "hsyn:///"
 
 
@@ -37,13 +37,13 @@ class RestBackendConfig(sdm_absbackends.AbstractBackendConfig):
     """
     def __init__(self):
         self.default_mount_path = DEFAULT_MOUNT_PATH
-        self.rest_host = DEFAULT_REST_HOST
+        self.rest_hosts = DEFAULT_REST_HOSTS
 
     @classmethod
     def from_dict(cls, d):
         config = RestBackendConfig()
         config.default_mount_path = d["default_mount_path"]
-        config.rest_host = d["rest_host"]
+        config.rest_hosts = d["rest_hosts"]
         return config
 
     @classmethod
@@ -53,7 +53,7 @@ class RestBackendConfig(sdm_absbackends.AbstractBackendConfig):
     def to_json(self):
         return json.dumps({
             "default_mount_path": self.default_mount_path,
-            "rest_host": self.rest_host
+            "rest_hosts": self.rest_hosts
         })
 
     def __eq__(self, other):
@@ -61,7 +61,7 @@ class RestBackendConfig(sdm_absbackends.AbstractBackendConfig):
 
     def __repr__(self):
         return "<RestBackendConfig %s>" % \
-            (self.rest_host)
+            (self.rest_hosts)
 
 
 class RestBackend(sdm_absbackends.AbstractBackend):
@@ -112,15 +112,21 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
     def _check_syndicate_user(self, mount_id):
         try:
-            url = "%s/user/check" % self.backend_config.rest_host
-            params = {
-                "mount_id": mount_id
-            }
-            sdm_util.log_message("Sending a HTTP GET request : %s" % url)
-            response = requests.get(url, params=params)
-            response.raise_for_status()
-            result = response.json()
-            return bool(result["result"])
+            success = True
+            for rest_host in self.backend_config.rest_hosts:
+                url = "%s/user/check" % rest_host
+                params = {
+                    "mount_id": mount_id
+                }
+                sdm_util.log_message("Sending a HTTP GET request : %s" % url)
+                response = requests.get(url, params=params)
+                response.raise_for_status()
+                result = response.json()
+                r = bool(result["result"])
+                if not r:
+                    success = False
+                    break
+            return success
         except Exception, e:
             raise RestBackendException("cannot check user : %s" % e)
 
@@ -139,24 +145,25 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
             try:
                 # register
-                url = "%s/user/setup" % self.backend_config.rest_host
-                files = {
-                    "cert": open(user_pkey_path, 'rb')
-                }
-                values = {
-                    "ms_url": ms_host,
-                    "user": username,
-                    "mount_id": mount_id
-                }
-                sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-                response = requests.post(url, files=files, data=values)
-                response.raise_for_status()
-                result = response.json()
-                r = bool(result["result"])
-                if r:
-                    sdm_util.log_message("Successfully set up Syndicate for an user, %s" % username)
-                else:
-                    raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, r))
+                for rest_host in self.backend_config.rest_hosts:
+                    url = "%s/user/setup" % rest_host
+                    files = {
+                        "cert": open(user_pkey_path, 'rb')
+                    }
+                    values = {
+                        "ms_url": ms_host,
+                        "user": username,
+                        "mount_id": mount_id
+                    }
+                    sdm_util.log_message("Sending a HTTP POST request : %s" % url)
+                    response = requests.post(url, files=files, data=values)
+                    response.raise_for_status()
+                    result = response.json()
+                    r = bool(result["result"])
+                    if not r:
+                        raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, r))
+
+                sdm_util.log_message("Successfully set up Syndicate for an user, %s" % username)
             except Exception, e:
                 raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, e))
             finally:
@@ -164,30 +171,37 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
     def _delete_syndicate_user(self, mount_id):
         try:
-            url = "%s/user/delete" % self.backend_config.rest_host
-            params = {
-                "mount_id": mount_id
-            }
-            sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
-            response = requests.delete(url, params=params)
-            response.raise_for_status()
-            result = response.json()
-            r = bool(result["result"])
-            if not r:
-                raise RestBackendException("cannot delete user : %s - " % r)
+            for rest_host in self.backend_config.rest_hosts:
+                url = "%s/user/delete" % rest_host
+                params = {
+                    "mount_id": mount_id
+                }
+                sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
+                response = requests.delete(url, params=params)
+                response.raise_for_status()
+                result = response.json()
+                r = bool(result["result"])
+                if not r:
+                    raise RestBackendException("cannot delete user : %s - " % r)
         except Exception, e:
             raise RestBackendException("cannot delete user : %s" % e)
 
     def _check_syndicate_gateway(self, session_name):
         try:
-            url = "%s/gateway/check" % self.backend_config.rest_host
-            params = {
-                "session_name": session_name
-            }
-            response = requests.get(url, params=params)
-            response.raise_for_status()
-            result = response.json()
-            return bool(result["result"])
+            success = True
+            for rest_host in self.backend_config.rest_hosts:
+                url = "%s/gateway/check" % rest_host
+                params = {
+                    "session_name": session_name
+                }
+                response = requests.get(url, params=params)
+                response.raise_for_status()
+                result = response.json()
+                r = bool(result["result"])
+                if not r:
+                    success = False
+                    break
+            return success
         except Exception, e:
             raise RestBackendException("cannot check mount : %s" % e)
 
@@ -195,43 +209,43 @@ class RestBackend(sdm_absbackends.AbstractBackend):
         sdm_util.log_message("Registering a syndicate gateway, %s for %s" % (gateway_name, dataset))
         try:
             # register
-            url = "%s/gateway/setup" % self.backend_config.rest_host
-            values = {
-                "mount_id": mount_id,
-                "session_name": session_name,
-                "session_key": dataset,
-                "volume": dataset,
-                "gateway": gateway_name,
-                "anonymous": "true"
-            }
-            sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-            response = requests.post(url, data=values)
-            response.raise_for_status()
-            result = response.json()
-            r = bool(result["result"])
-            if r:
-                sdm_util.log_message("Successfully set up a syndicate gateway, %s for %s" % (gateway_name, dataset))
-            else:
-                raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, r))
+            for rest_host in self.backend_config.rest_hosts:
+                url = "%s/gateway/setup" % rest_host
+                values = {
+                    "mount_id": mount_id,
+                    "session_name": session_name,
+                    "session_key": dataset,
+                    "volume": dataset,
+                    "gateway": gateway_name,
+                    "anonymous": "true"
+                }
+                sdm_util.log_message("Sending a HTTP POST request : %s" % url)
+                response = requests.post(url, data=values)
+                response.raise_for_status()
+                result = response.json()
+                r = bool(result["result"])
+                if not r:
+                    raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, r))
+
+            sdm_util.log_message("Successfully registered a syndicate gateway, %s for %s" % (gateway_name, dataset))
         except Exception, e:
             raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, e))
 
-        sdm_util.log_message("Successfully registered a syndicate gateway, %s for %s" % (gateway_name, dataset))
-
     def _delete_syndicate_gateway(self, mount_id, dataset, session_name):
         try:
-            url = "%s/gateway/delete" % self.backend_config.rest_host
-            params = {
-                "session_name": session_name,
-                "session_key": dataset
-            }
-            sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
-            response = requests.delete(url, params=params)
-            response.raise_for_status()
-            result = response.json()
-            r = bool(result["result"])
-            if not r:
-                raise RestBackendException("cannot delete user : %s - " % r)
+            for rest_host in self.backend_config.rest_hosts:
+                url = "%s/gateway/delete" % rest_host
+                params = {
+                    "session_name": session_name,
+                    "session_key": dataset
+                }
+                sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
+                response = requests.delete(url, params=params)
+                response.raise_for_status()
+                result = response.json()
+                r = bool(result["result"])
+                if not r:
+                    raise RestBackendException("cannot delete user : %s - " % r)
         except Exception, e:
             raise RestBackendException("cannot delete user : %s" % e)
 
