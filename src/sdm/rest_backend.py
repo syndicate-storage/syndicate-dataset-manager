@@ -15,9 +15,11 @@
    limitations under the License.
 """
 
+import os
 import json
 import requests
 import urlparse
+import tempfile
 import abstract_backend as sdm_absbackends
 import util as sdm_util
 
@@ -116,6 +118,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             }
             sdm_util.log_message("Sending a HTTP GET request : %s" % url)
             response = requests.get(url, params=params)
+            response.raise_for_status()
             result = response.json()
             return bool(result["result"])
         except Exception, e:
@@ -138,13 +141,16 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 # register
                 url = "%s/user/setup" % self.backend_config.rest_host
                 files = {
+                    "cert": open(user_pkey_path, 'rb')
+                }
+                values = {
                     "ms_url": ms_host,
                     "user": username,
-                    "mount_id": mount_id,
-                    "cert": (open(user_pkey_path, 'rb'))
+                    "mount_id": mount_id
                 }
                 sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-                response = requests.post(url, files=files)
+                response = requests.post(url, files=files, data=values)
+                response.raise_for_status()
                 result = response.json()
                 r = bool(result["result"])
                 if r:
@@ -164,6 +170,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             }
             sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
             response = requests.delete(url, params=params)
+            response.raise_for_status()
             result = response.json()
             r = bool(result["result"])
             if not r:
@@ -178,6 +185,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 "session_name": session_name
             }
             response = requests.get(url, params=params)
+            response.raise_for_status()
             result = response.json()
             return bool(result["result"])
         except Exception, e:
@@ -189,16 +197,19 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             # register
             url = "%s/gateway/setup" % self.backend_config.rest_host
             files = {
+                "cert": open(user_pkey_path, 'rb')
+            }
+            values = {
                 "mount_id": mount_id,
                 "session_name": session_name,
                 "session_key": dataset,
                 "volume": dataset,
                 "gateway": gateway_name,
-                "anonymous": "true",
-                "cert": (open(user_pkey_path, 'rb'))
+                "anonymous": "true"
             }
             sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-            response = requests.post(url, files=files)
+            response = requests.post(url, files=files, data=values)
+            response.raise_for_status()
             result = response.json()
             r = bool(result["result"])
             if r:
@@ -214,12 +225,12 @@ class RestBackend(sdm_absbackends.AbstractBackend):
         try:
             url = "%s/gateway/delete" % self.backend_config.rest_host
             params = {
-                "mount_id": mount_id,
                 "session_name": session_name,
                 "session_key": dataset
             }
             sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
             response = requests.delete(url, params=params)
+            response.raise_for_status()
             result = response.json()
             r = bool(result["result"])
             if not r:
