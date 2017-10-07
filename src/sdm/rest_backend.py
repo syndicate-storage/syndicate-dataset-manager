@@ -196,9 +196,6 @@ class RestBackend(sdm_absbackends.AbstractBackend):
         try:
             # register
             url = "%s/gateway/setup" % self.backend_config.rest_host
-            files = {
-                "cert": open(user_pkey_path, 'rb')
-            }
             values = {
                 "mount_id": mount_id,
                 "session_name": session_name,
@@ -208,7 +205,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 "anonymous": "true"
             }
             sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-            response = requests.post(url, files=files, data=values)
+            response = requests.post(url, data=values)
             response.raise_for_status()
             result = response.json()
             r = bool(result["result"])
