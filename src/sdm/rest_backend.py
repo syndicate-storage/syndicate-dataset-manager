@@ -19,7 +19,6 @@ import os
 import json
 import requests
 import urlparse
-import tempfile
 import abstract_backend as sdm_absbackends
 import util as sdm_util
 
@@ -138,25 +137,18 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
         if not skip_config:
             sdm_util.log_message("Setting up Syndicate for an user, %s" % username)
-            user_pkey_fd, user_pkey_path = tempfile.mkstemp()
-            f = os.fdopen(user_pkey_fd, "w")
-            f.write(user_pkey)
-            f.close()
-
             try:
                 # register
                 for rest_host in self.backend_config.rest_hosts:
                     url = "%s/user/setup" % rest_host
-                    files = {
-                        "cert": open(user_pkey_path, 'rb')
-                    }
                     values = {
                         "ms_url": ms_host,
                         "user": username,
-                        "mount_id": mount_id
+                        "mount_id": mount_id,
+                        "cert": user_pkey
                     }
                     sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-                    response = requests.post(url, files=files, data=values)
+                    response = requests.post(url, data=values)
                     response.raise_for_status()
                     result = response.json()
                     r = bool(result["result"])
@@ -166,8 +158,6 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 sdm_util.log_message("Successfully set up Syndicate for an user, %s" % username)
             except Exception, e:
                 raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, e))
-            finally:
-                os.remove(user_pkey_path)
 
     def _delete_syndicate_user(self, mount_id):
         try:
