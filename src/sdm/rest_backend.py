@@ -109,105 +109,36 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             return path[:idx]
         return path
 
-    def _check_syndicate_user(self, mount_id):
+    def _check_syndicate_user(self, rest_host, mount_id):
         try:
-            success = True
-            for rest_host in self.backend_config.rest_hosts:
-                url = "%s/user/check" % rest_host
-                params = {
-                    "mount_id": mount_id
-                }
-                sdm_util.log_message("Sending a HTTP GET request : %s" % url)
-                response = requests.get(url, params=params)
-                response.raise_for_status()
-                result = response.json()
-                r = bool(result["result"])
-                if not r:
-                    success = False
-                    break
-            return success
+            url = "%s/user/check" % rest_host
+            params = {
+                "mount_id": mount_id
+            }
+            sdm_util.log_message("Sending a HTTP GET request : %s" % url)
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            result = response.json()
+            return bool(result["result"])
         except Exception, e:
             raise RestBackendException("cannot check user : %s" % e)
 
-    def _regist_syndicate_user(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host):
+    def _regist_syndicate_user(self, rest_host, mount_id, dataset, username, user_pkey, gateway_name, ms_host):
         # check if mount_id already exists
         skip_config = False
-        if self._check_syndicate_user(mount_id):
+        if self._check_syndicate_user(rest_host, mount_id):
             skip_config = True
 
         if not skip_config:
             sdm_util.log_message("Setting up Syndicate for an user, %s" % username)
             try:
                 # register
-                for rest_host in self.backend_config.rest_hosts:
-                    url = "%s/user/setup" % rest_host
-                    values = {
-                        "ms_url": ms_host,
-                        "user": username,
-                        "mount_id": mount_id,
-                        "cert": user_pkey
-                    }
-                    sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-                    response = requests.post(url, data=values)
-                    response.raise_for_status()
-                    result = response.json()
-                    r = bool(result["result"])
-                    if not r:
-                        raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, r))
-
-                sdm_util.log_message("Successfully set up Syndicate for an user, %s" % username)
-            except Exception, e:
-                raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, e))
-
-    def _delete_syndicate_user(self, mount_id):
-        try:
-            for rest_host in self.backend_config.rest_hosts:
-                url = "%s/user/delete" % rest_host
-                params = {
-                    "mount_id": mount_id
-                }
-                sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
-                response = requests.delete(url, params=params)
-                response.raise_for_status()
-                result = response.json()
-                r = bool(result["result"])
-                if not r:
-                    raise RestBackendException("cannot delete user : %s - " % r)
-        except Exception, e:
-            raise RestBackendException("cannot delete user : %s" % e)
-
-    def _check_syndicate_gateway(self, session_name):
-        try:
-            success = True
-            for rest_host in self.backend_config.rest_hosts:
-                url = "%s/gateway/check" % rest_host
-                params = {
-                    "session_name": session_name
-                }
-                response = requests.get(url, params=params)
-                response.raise_for_status()
-                result = response.json()
-                r = bool(result["result"])
-                if not r:
-                    success = False
-                    break
-            return success
-        except Exception, e:
-            raise RestBackendException("cannot check mount : %s" % e)
-
-    def _regist_syndicate_gateway(self, mount_id, dataset, gateway_name, session_name):
-        sdm_util.log_message("Registering a syndicate gateway, %s for %s" % (gateway_name, dataset))
-        try:
-            # register
-            for rest_host in self.backend_config.rest_hosts:
-                url = "%s/gateway/setup" % rest_host
+                url = "%s/user/setup" % rest_host
                 values = {
+                    "ms_url": ms_host,
+                    "user": username,
                     "mount_id": mount_id,
-                    "session_name": session_name,
-                    "session_key": dataset,
-                    "volume": dataset,
-                    "gateway": gateway_name,
-                    "anonymous": "true"
+                    "cert": user_pkey
                 }
                 sdm_util.log_message("Sending a HTTP POST request : %s" % url)
                 response = requests.post(url, data=values)
@@ -215,51 +146,115 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 result = response.json()
                 r = bool(result["result"])
                 if not r:
-                    raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, r))
+                    raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, r))
+
+                sdm_util.log_message("Successfully set up Syndicate for an user, %s" % username)
+            except Exception, e:
+                raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, e))
+
+    def _delete_syndicate_user(self, rest_host, mount_id):
+        try:
+            url = "%s/user/delete" % rest_host
+            params = {
+                "mount_id": mount_id
+            }
+            sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
+            response = requests.delete(url, params=params)
+            response.raise_for_status()
+            result = response.json()
+            r = bool(result["result"])
+            if not r:
+                raise RestBackendException("cannot delete user : %s - " % r)
+        except Exception, e:
+            raise RestBackendException("cannot delete user : %s" % e)
+
+    def _check_syndicate_gateway(self, rest_host, session_name):
+        try:
+            success = True
+            url = "%s/gateway/check" % rest_host
+            params = {
+                "session_name": session_name
+            }
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            result = response.json()
+            return bool(result["result"])
+        except Exception, e:
+            raise RestBackendException("cannot check mount : %s" % e)
+
+    def _regist_syndicate_gateway(self, rest_host, mount_id, dataset, gateway_name, session_name):
+        sdm_util.log_message("Registering a syndicate gateway, %s for %s" % (gateway_name, dataset))
+        try:
+            # register
+            url = "%s/gateway/setup" % rest_host
+            values = {
+                "mount_id": mount_id,
+                "session_name": session_name,
+                "session_key": dataset,
+                "volume": dataset,
+                "gateway": gateway_name,
+                "anonymous": "true"
+            }
+            sdm_util.log_message("Sending a HTTP POST request : %s" % url)
+            response = requests.post(url, data=values)
+            response.raise_for_status()
+            result = response.json()
+            r = bool(result["result"])
+            if not r:
+                raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, r))
 
             sdm_util.log_message("Successfully registered a syndicate gateway, %s for %s" % (gateway_name, dataset))
         except Exception, e:
             raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, e))
 
-    def _delete_syndicate_gateway(self, mount_id, dataset, session_name):
+    def _delete_syndicate_gateway(self, rest_host, mount_id, dataset, session_name):
         try:
-            for rest_host in self.backend_config.rest_hosts:
-                url = "%s/gateway/delete" % rest_host
-                params = {
-                    "session_name": session_name,
-                    "session_key": dataset
-                }
-                sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
-                response = requests.delete(url, params=params)
-                response.raise_for_status()
-                result = response.json()
-                r = bool(result["result"])
-                if not r:
-                    raise RestBackendException("cannot delete user : %s - " % r)
+            url = "%s/gateway/delete" % rest_host
+            params = {
+                "session_name": session_name,
+                "session_key": dataset
+            }
+            sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
+            response = requests.delete(url, params=params)
+            response.raise_for_status()
+            result = response.json()
+            r = bool(result["result"])
+            if not r:
+                raise RestBackendException("cannot delete user : %s - " % r)
         except Exception, e:
             raise RestBackendException("cannot delete user : %s" % e)
 
     def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path):
         sdm_util.print_message("Mounting a dataset %s to %s" % (dataset, mount_path), True)
         session_name = self._get_session_name(mount_path)
-        self._regist_syndicate_user(mount_id, dataset, username, user_pkey, gateway_name, ms_host)
-        self._regist_syndicate_gateway(mount_id, dataset, gateway_name, session_name)
+
+        for rest_host in self.backend_config.rest_hosts:
+            self._regist_syndicate_user(rest_host, mount_id, dataset, username, user_pkey, gateway_name, ms_host)
+            self._regist_syndicate_gateway(rest_host, mount_id, dataset, gateway_name, session_name)
+
         sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
 
     def check_mount(self, mount_id, dataset, mount_path):
         session_name = self._get_session_name(mount_path)
         try:
-            return self._check_syndicate_gateway(session_name)
+            result = True
+            for rest_host in self.backend_config.rest_hosts:
+                r = self._check_syndicate_gateway(rest_host, session_name)
+                if not r:
+                    result = False
+                    break
         except RestBackendException, e:
             return False
 
     def unmount(self, mount_id, dataset, mount_path, cleanup=False):
         sdm_util.print_message("Unmounting a dataset %s mounted at %s" % (dataset, mount_path), True)
         session_name = self._get_session_name(mount_path)
-        if(self._check_syndicate_gateway(session_name)):
-            self._delete_syndicate_gateway(mount_id, dataset, session_name)
 
-        if cleanup:
-            self._delete_syndicate_user(mount_id)
+        for rest_host in self.backend_config.rest_hosts:
+            if self._check_syndicate_gateway(rest_host, session_name):
+                self._delete_syndicate_gateway(rest_host, mount_id, dataset, session_name)
+
+            if cleanup:
+                self._delete_syndicate_user(rest_host, mount_id)
 
         sdm_util.print_message("Successfully unmounted a dataset %s mounted at %s" % (dataset, mount_path), True)
