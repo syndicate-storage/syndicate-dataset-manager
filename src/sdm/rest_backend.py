@@ -256,7 +256,9 @@ class RestBackend(sdm_absbackends.AbstractBackend):
     def unmount(self, mount_id, dataset, mount_path, cleanup=False):
         sdm_util.print_message("Unmounting a dataset %s mounted at %s" % (dataset, mount_path), True)
         session_name = self._get_session_name(mount_path)
-        self._delete_syndicate_gateway(mount_id, dataset, session_name)
+        if(self._check_syndicate_gateway(session_name)):
+            self._delete_syndicate_gateway(mount_id, dataset, session_name)
+
         if cleanup:
             self._delete_syndicate_user(mount_id)
 
