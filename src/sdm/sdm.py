@@ -30,14 +30,14 @@ import util as sdm_util
 from prettytable import PrettyTable
 
 SDM_CONFIG_DIR = "~/.sdm"
-ABS_SDM_CONFIG_DIR = sdm_util.get_abs_path(SDM_CONFIG_DIR)
-CONFIG_PATH = "%s/sdm.conf" % ABS_SDM_CONFIG_DIR
-MOUNT_TABLE_PATH = "%s/sdm_mtab" % ABS_SDM_CONFIG_DIR
+CONFIG_PATH = ""
+MOUNT_TABLE_PATH = ""
 
-config = sdm_config.Config(CONFIG_PATH)
-mount_table = sdm_mount_table.MountTable(MOUNT_TABLE_PATH)
-repository = sdm_repository.Repository(config.repo_url)
-backend = config.default_backend
+config = None
+mount_table = None
+repository = None
+backend = None
+
 
 OPTIONS_TABLE = {}
 COMMANDS = []
@@ -46,6 +46,7 @@ COMMANDS_TABLE = {}
 
 def fill_options_table():
     OPTIONS_TABLE["log"] = getattr(logging, "WARNING", None)
+    OPTIONS_TABLE["config"] = SDM_CONFIG_DIR
 
 
 def fill_commands_table():
@@ -462,6 +463,8 @@ def set_option(k, v="True"):
         OPTIONS_TABLE[k] = getattr(logging, v.upper(), None)
     elif k == "backend":
         OPTIONS_TABLE[k] = sdm_backends.Backends.get_backend_name(v)
+    elif k == "config":
+        OPTIONS_TABLE[k] = sdm_util.get_abs_path(v)
 
 
 def extract_options(argv):
@@ -500,6 +503,21 @@ def process_options():
 
             global backend
             backend = _backend
+        elif k == "config":
+            _config_root = OPTIONS_TABLE[k]
+            sdm_util.log_message("Set config root to %s" % _config_root)
+
+            ABS_SDM_CONFIG_DIR = sdm_util.get_abs_path(_config_root)
+            global CONFIG_PATH
+            CONFIG_PATH = "%s/sdm.conf" % ABS_SDM_CONFIG_DIR
+            global MOUNT_TABLE_PATH
+            MOUNT_TABLE_PATH = "%s/sdm_mtab" % ABS_SDM_CONFIG_DIR
+            global config
+            config = sdm_config.Config(CONFIG_PATH)
+            global mount_table
+            mount_table = sdm_mount_table.MountTable(MOUNT_TABLE_PATH)
+            global repository
+            repository = sdm_repository.Repository(config.repo_url)
 
 
 def main(argv=None):
