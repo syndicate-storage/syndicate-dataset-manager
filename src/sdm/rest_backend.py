@@ -243,6 +243,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 if not r:
                     result = False
                     break
+            return result
         except RestBackendException, e:
             return False
 
