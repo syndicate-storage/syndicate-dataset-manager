@@ -497,31 +497,31 @@ def process_options():
             sdm_util.log_message("Set log level to %s" % numeric_level)
 
     # defaults
+    global CONFIG_PATH
+    global MOUNT_TABLE_PATH
+    global config
+    global mount_table
+    global repository
+    global backend
+
     for k in OPTIONS_TABLE:
         if k == "config":
             _config_root = OPTIONS_TABLE[k]
             sdm_util.log_message("Set config root to %s" % _config_root)
 
             ABS_SDM_CONFIG_DIR = sdm_util.get_abs_path(_config_root)
-            global CONFIG_PATH
             CONFIG_PATH = "%s/sdm.conf" % ABS_SDM_CONFIG_DIR
-            global MOUNT_TABLE_PATH
             MOUNT_TABLE_PATH = "%s/sdm_mtab" % ABS_SDM_CONFIG_DIR
-            global config
+
             config = sdm_config.Config(CONFIG_PATH)
-            global mount_table
             mount_table = sdm_mount_table.MountTable(MOUNT_TABLE_PATH)
-            global repository
             repository = sdm_repository.Repository(config.repo_url)
-            global backend
             backend = config.default_backend
 
     for k in OPTIONS_TABLE:
         if k == "backend":
             _backend = OPTIONS_TABLE[k]
             sdm_util.log_message("Set backend to %s" % _backend)
-
-            global backend
             backend = _backend
 
 
