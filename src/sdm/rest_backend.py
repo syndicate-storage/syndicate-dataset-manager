@@ -124,6 +124,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             res = grequests.map(set(req))[0]
             self._raise_error_on_http_error(res.status_code)
             result = res.json()
+            sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
             return sdm_util.to_bool(result["result"])
         except Exception, e:
             raise RestBackendException("cannot check user : %s" % e)
@@ -147,8 +148,9 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             for res in ress:
                 self._raise_error_on_http_error(res.status_code)
                 result = res.json()
+                sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                 rest_host = rest_hosts[idx]
-                results[rest_host] = sdm_util.to_bool(result)
+                results[rest_host] = sdm_util.to_bool(result["result"])
                 idx += 1
             return results
         except Exception, e:
@@ -176,6 +178,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 res = grequests.map(set(req))[0]
                 self._raise_error_on_http_error(res.status_code)
                 result = res.json()
+                sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                 r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, r))
@@ -218,6 +221,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 for res in ress:
                     self._raise_error_on_http_error(res.status_code)
                     result = res.json()
+                    sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                     r = sdm_util.to_bool(result["result"])
                     if not r:
                         raise RestBackendException("cannot setup Syndicate for an user, %s - %s : %s" % (target_rest_hosts[idx], username, r))
@@ -246,6 +250,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 res = grequests.map(set(req))[0]
                 self._raise_error_on_http_error(res.status_code)
                 result = res.json()
+                sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                 r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot delete an user : %s - " % r)
@@ -282,6 +287,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 for res in ress:
                     self._raise_error_on_http_error(res.status_code)
                     result = res.json()
+                    sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                     r = sdm_util.to_bool(result["result"])
                     if not r:
                         raise RestBackendException("cannot delete an user : %s - %s" % (rest_hosts[idx], r))
@@ -300,6 +306,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             res = grequests.map(set(req))[0]
             self._raise_error_on_http_error(res.status_code)
             result = res.json()
+            sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
             return sdm_util.to_bool(result["result"])
         except Exception, e:
             raise RestBackendException("cannot check mount : %s" % e)
@@ -323,8 +330,9 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             for res in ress:
                 self._raise_error_on_http_error(res.status_code)
                 result = res.json()
+                sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                 rest_host = rest_hosts[idx]
-                results[rest_host] = sdm_util.to_bool(result)
+                results[rest_host] = sdm_util.to_bool(result["result"])
                 idx += 1
             return results
         except Exception, e:
@@ -354,6 +362,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 res = grequests.map(set(req))[0]
                 self._raise_error_on_http_error(res.status_code)
                 result = res.json()
+                sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                 r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, r))
@@ -398,6 +407,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 for res in ress:
                     self._raise_error_on_http_error(res.status_code)
                     result = res.json()
+                    sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                     r = sdm_util.to_bool(result["result"])
                     if not r:
                         raise RestBackendException("cannot register a syndicate gateway, %s - %s for %s : %s" % (target_rest_hosts[idx], gateway_name, dataset, r))
@@ -427,6 +437,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 res = grequests.map(set(req))[0]
                 self._raise_error_on_http_error(res.status_code)
                 result = res.json()
+                sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                 r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot delete gateway : %s - " % r)
@@ -463,6 +474,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 for res in ress:
                     self._raise_error_on_http_error(res.status_code)
                     result = res.json()
+                    sdm_util.log_message("> RETURN : %s" % result, sdm_util.LogLevel.DEBUG)
                     r = sdm_util.to_bool(result["result"])
                     if not r:
                         raise RestBackendException("cannot delete gateway : %s - %s" % (rest_hosts[idx], r))
