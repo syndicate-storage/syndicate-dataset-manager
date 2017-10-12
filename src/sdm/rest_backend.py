@@ -90,7 +90,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
         parts = urlparse.urlparse(default_mount_path)
 
         if not parts.scheme:
-            raise RestBackendException( "cannot make default mount path for %s" % dataset)
+            raise RestBackendException("cannot make default mount path for %s" % dataset)
 
         mount_path = "%s://%s/%s" % (
             parts.scheme,
@@ -109,6 +109,10 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             return path[:idx]
         return path
 
+    def _raise_error_on_http_error(self, status_code):
+        if status_code >= 400 and status_code <= 599:
+            raise RestBackendException("received a http error - code %s" % status_code)
+
     def _check_syndicate_user(self, rest_host, mount_id):
         try:
             url = "%s/user/check" % rest_host
@@ -117,7 +121,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             }
             sdm_util.log_message("Sending a HTTP GET request : %s" % url)
             response = grequests.get(url, params=params)
-            response.raise_for_status()
+            self._raise_error_on_http_error(response.status_code)
             result = response.json()
             return sdm_util.to_bool(result["result"])
         except Exception, e:
@@ -140,7 +144,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             results = {}
             idx = 0
             for res in ress:
-                res.raise_for_status()
+                self._raise_error_on_http_error(res.status_code)
                 result = res.json()
                 rest_host = rest_hosts[idx]
                 results[rest_host] = sdm_util.to_bool(result)
@@ -168,7 +172,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 }
                 sdm_util.log_message("Sending a HTTP POST request : %s" % url)
                 response = grequests.post(url, data=values)
-                response.raise_for_status()
+                self._raise_error_on_http_error(response.status_code)
                 result = response.json()
                 r = sdm_util.to_bool(result["result"])
                 if not r:
@@ -210,7 +214,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 ress = grequests.map(set(reqs))
                 idx = 0
                 for res in ress:
-                    res.raise_for_status()
+                    self._raise_error_on_http_error(res.status_code)
                     result = res.json()
                     r = sdm_util.to_bool(result["result"])
                     if not r:
@@ -237,7 +241,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 }
                 sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
                 response = grequests.delete(url, params=params)
-                response.raise_for_status()
+                self._raise_error_on_http_error(response.status_code)
                 result = response.json()
                 r = sdm_util.to_bool(result["result"])
                 if not r:
@@ -273,7 +277,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 ress = grequests.map(set(reqs))
                 idx = 0
                 for res in ress:
-                    res.raise_for_status()
+                    self._raise_error_on_http_error(res.status_code)
                     result = res.json()
                     r = sdm_util.to_bool(result["result"])
                     if not r:
@@ -290,7 +294,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 "session_name": session_name
             }
             response = grequests.get(url, params=params)
-            response.raise_for_status()
+            self._raise_error_on_http_error(response.status_code)
             result = response.json()
             return sdm_util.to_bool(result["result"])
         except Exception, e:
@@ -313,7 +317,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             results = {}
             idx = 0
             for res in ress:
-                res.raise_for_status()
+                self._raise_error_on_http_error(res.status_code)
                 result = res.json()
                 rest_host = rest_hosts[idx]
                 results[rest_host] = sdm_util.to_bool(result)
@@ -343,7 +347,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 }
                 sdm_util.log_message("Sending a HTTP POST request : %s" % url)
                 response = grequests.post(url, data=values)
-                response.raise_for_status()
+                self._raise_error_on_http_error(response.status_code)
                 result = response.json()
                 r = sdm_util.to_bool(result["result"])
                 if not r:
@@ -387,7 +391,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 ress = grequests.map(set(reqs))
                 idx = 0
                 for res in ress:
-                    res.raise_for_status()
+                    self._raise_error_on_http_error(res.status_code)
                     result = res.json()
                     r = sdm_util.to_bool(result["result"])
                     if not r:
@@ -415,7 +419,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 }
                 sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
                 response = grequests.delete(url, params=params)
-                response.raise_for_status()
+                self._raise_error_on_http_error(response.status_code)
                 result = response.json()
                 r = sdm_util.to_bool(result["result"])
                 if not r:
@@ -451,7 +455,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 ress = grequests.map(set(reqs))
                 idx = 0
                 for res in ress:
-                    res.raise_for_status()
+                    self._raise_error_on_http_error(res.status_code)
                     result = res.json()
                     r = sdm_util.to_bool(result["result"])
                     if not r:
