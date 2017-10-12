@@ -1,7 +1,26 @@
 # SDM: Syndicate Dataset Manager
 
-Syndicate Dataset Manager (SDM) allows you to mount public datasets on Syndicate 
+Syndicate Dataset Manager (SDM) allows you to mount public datasets on Syndicate
 easily.
+
+Commands
+========
+
+- `mount` : mount a dataset
+- `mmount` : mount multi-datasets
+- `unmount` : unmount
+- `munmount` : unmount multi
+- `ls` : show public datasets available
+- `ps` : show current mount status
+- `clean` : clear mount states (local caches and ETC.)
+
+
+Options
+=======
+
+- `--log` : set log level (Default: `info`)
+- `--backend` : set backend (Default: `FUSE`)
+
 
 Usage
 =====
@@ -69,7 +88,7 @@ To unmount:
 sdm unmount <dataset OR mount_path OR mount_id> [<cleanup flag>]
 ```
 
-`cleanup flag` is `boolean`. If `cleanup flag` is set `true`, `SDM` does not 
+`cleanup flag` is `boolean`. If `cleanup flag` is set `true`, `SDM` does not
 leave mount states including all configuration files and local caches.
 
 e.g.
@@ -81,4 +100,9 @@ Successfully unmounted syndicatefs, /home/iychoi/ivirus
 To clean up `UNMOUNTED` mounts:
 ```
 sdm clean
+```
+
+To show more verbose log messages:
+```
+sdm ps --log=debug
 ```

@@ -278,7 +278,7 @@ def unmount_dataset(argv):
     if len(argv) >= 1:
         cleanup = False
         if len(argv) >= 2:
-            cleanup = bool(argv[1])
+            cleanup = sdm_util.to_bool(argv[1])
 
         arg = argv[0]
 

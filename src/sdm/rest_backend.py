@@ -119,7 +119,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             response = requests.get(url, params=params)
             response.raise_for_status()
             result = response.json()
-            return bool(result["result"])
+            return sdm_util.to_bool(result["result"])
         except Exception, e:
             raise RestBackendException("cannot check user : %s" % e)
 
@@ -144,7 +144,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 response = requests.post(url, data=values)
                 response.raise_for_status()
                 result = response.json()
-                r = bool(result["result"])
+                r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, r))
 
@@ -162,7 +162,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             response = requests.delete(url, params=params)
             response.raise_for_status()
             result = response.json()
-            r = bool(result["result"])
+            r = sdm_util.to_bool(result["result"])
             if not r:
                 raise RestBackendException("cannot delete user : %s - " % r)
         except Exception, e:
@@ -178,7 +178,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             response = requests.get(url, params=params)
             response.raise_for_status()
             result = response.json()
-            return bool(result["result"])
+            return sdm_util.to_bool(result["result"])
         except Exception, e:
             raise RestBackendException("cannot check mount : %s" % e)
 
@@ -199,7 +199,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             response = requests.post(url, data=values)
             response.raise_for_status()
             result = response.json()
-            r = bool(result["result"])
+            r = sdm_util.to_bool(result["result"])
             if not r:
                 raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, r))
 
@@ -218,7 +218,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             response = requests.delete(url, params=params)
             response.raise_for_status()
             result = response.json()
-            r = bool(result["result"])
+            r = sdm_util.to_bool(result["result"])
             if not r:
                 raise RestBackendException("cannot delete user : %s - " % r)
         except Exception, e:

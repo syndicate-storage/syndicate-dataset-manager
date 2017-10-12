@@ -61,3 +61,8 @@ def get_abs_path(path):
     if "://" in path:
         return path
     return os.path.abspath(expanduser(path).strip())
+
+def to_bool(s):
+    if s.lower() in ["yes", "true", "t", "1"]:
+        return True
+    return False
