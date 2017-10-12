@@ -120,9 +120,10 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                 "mount_id": mount_id
             }
             sdm_util.log_message("Sending a HTTP GET request : %s" % url)
-            response = grequests.get(url, params=params)
-            self._raise_error_on_http_error(response.status_code)
-            result = response.json()
+            req = [grequests.get(url, params=params)]
+            res = grequests.map(set(req))[0]
+            self._raise_error_on_http_error(res.status_code)
+            result = res.json()
             return sdm_util.to_bool(result["result"])
         except Exception, e:
             raise RestBackendException("cannot check user : %s" % e)
@@ -171,9 +172,10 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                     "cert": user_pkey
                 }
                 sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-                response = grequests.post(url, data=values)
-                self._raise_error_on_http_error(response.status_code)
-                result = response.json()
+                req = [grequests.post(url, data=values)]
+                res = grequests.map(set(req))[0]
+                self._raise_error_on_http_error(res.status_code)
+                result = res.json()
                 r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot setup Syndicate for an user, %s : %s" % (username, r))
@@ -240,9 +242,10 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                     "mount_id": mount_id
                 }
                 sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
-                response = grequests.delete(url, params=params)
-                self._raise_error_on_http_error(response.status_code)
-                result = response.json()
+                req = [grequests.delete(url, params=params)]
+                res = grequests.map(set(req))[0]
+                self._raise_error_on_http_error(res.status_code)
+                result = res.json()
                 r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot delete an user : %s - " % r)
@@ -293,9 +296,10 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             params = {
                 "session_name": session_name
             }
-            response = grequests.get(url, params=params)
-            self._raise_error_on_http_error(response.status_code)
-            result = response.json()
+            req = [grequests.get(url, params=params)]
+            res = grequests.map(set(req))[0]
+            self._raise_error_on_http_error(res.status_code)
+            result = res.json()
             return sdm_util.to_bool(result["result"])
         except Exception, e:
             raise RestBackendException("cannot check mount : %s" % e)
@@ -346,9 +350,10 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                     "anonymous": "true"
                 }
                 sdm_util.log_message("Sending a HTTP POST request : %s" % url)
-                response = grequests.post(url, data=values)
-                self._raise_error_on_http_error(response.status_code)
-                result = response.json()
+                req = [grequests.post(url, data=values)]
+                res = grequests.map(set(req))[0]
+                self._raise_error_on_http_error(res.status_code)
+                result = res.json()
                 r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot register a syndicate gateway, %s for %s : %s" % (gateway_name, dataset, r))
@@ -409,7 +414,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
             skip_config = True
 
         if not skip_config:
-            sdm_util.log_message("Deleting a syndicate gateway, %s for %s" % (gateway_name, dataset))
+            sdm_util.log_message("Deleting a syndicate gateway, %s" % (session_name))
             try:
                 # delete
                 url = "%s/gateway/delete" % rest_host
@@ -418,9 +423,10 @@ class RestBackend(sdm_absbackends.AbstractBackend):
                     "session_key": dataset
                 }
                 sdm_util.log_message("Sending a HTTP DELETE request : %s" % url)
-                response = grequests.delete(url, params=params)
-                self._raise_error_on_http_error(response.status_code)
-                result = response.json()
+                req = [grequests.delete(url, params=params)]
+                res = grequests.map(set(req))[0]
+                self._raise_error_on_http_error(res.status_code)
+                result = res.json()
                 r = sdm_util.to_bool(result["result"])
                 if not r:
                     raise RestBackendException("cannot delete gateway : %s - " % r)
@@ -438,7 +444,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
         if len(target_rest_hosts) > 0:
             try:
-                sdm_util.log_message("Deleting a syndicate gateway, %s for %s" % (gateway_name, dataset))
+                sdm_util.log_message("Deleting a syndicate gateway, %s" % (session_name))
 
                 params = {
                     "session_name": session_name,
@@ -469,7 +475,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
         session_name = self._get_session_name(mount_path)
 
         self._regist_syndicate_user_multi(self.backend_config.rest_hosts, mount_id, dataset, username, user_pkey, gateway_name, ms_host)
-        self._regist_syndicate_gateway(self.backend_config.rest_hosts, mount_id, dataset, gateway_name, session_name)
+        self._regist_syndicate_gateway_multi(self.backend_config.rest_hosts, mount_id, dataset, gateway_name, session_name)
         sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
 
     def check_mount(self, mount_id, dataset, mount_path):
