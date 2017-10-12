@@ -233,11 +233,11 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
     def _delete_syndicate_user(self, rest_host, mount_id):
         # check if mount_id already exists
-        skip_config = False
+        skip_delete = True
         if self._check_syndicate_user(rest_host, mount_id):
-            skip_config = True
+            skip_delete = False
 
-        if not skip_config:
+        if not skip_delete:
             sdm_util.log_message("Deleting an user, %s" % mount_id)
             try:
                 # delete
@@ -263,7 +263,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
         target_rest_hosts = []
         for rest_host in rest_hosts:
-            if not check_results[rest_host]:
+            if check_results[rest_host]:
                 target_rest_hosts.append(rest_host)
 
         if len(target_rest_hosts) > 0:
@@ -419,11 +419,11 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
     def _delete_syndicate_gateway(self, rest_host, mount_id, dataset, session_name):
         # check if session_name already exists
-        skip_config = False
+        skip_delete = True
         if self._check_syndicate_gateway(rest_host, session_name):
-            skip_config = True
+            skip_delete = False
 
-        if not skip_config:
+        if not skip_delete:
             sdm_util.log_message("Deleting a syndicate gateway, %s" % (session_name))
             try:
                 # delete
@@ -450,7 +450,7 @@ class RestBackend(sdm_absbackends.AbstractBackend):
 
         target_rest_hosts = []
         for rest_host in rest_hosts:
-            if not check_results[rest_host]:
+            if check_results[rest_host]:
                 target_rest_hosts.append(rest_host)
 
         if len(target_rest_hosts) > 0:
