@@ -63,6 +63,17 @@ def get_abs_path(path):
     return os.path.abspath(expanduser(path).strip())
 
 def to_bool(s):
-    if s.lower() in ["yes", "true", "t", "1"]:
-        return True
-    return False
+    if type(s) is bool:
+        return s
+    elif type(s) is str:
+        if s.lower() in ["yes", "true", "t", "1"]:
+            return True
+        else:
+            return False
+    elif type(s) is int:
+        if s > 0:
+            return True
+        else:
+            return False
+    else:
+        return False
