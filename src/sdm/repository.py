@@ -16,7 +16,7 @@
 """
 
 import json
-import requests
+import grequests
 
 class RepositoryException(Exception):
     pass
@@ -94,8 +94,9 @@ class Repository(object):
     def load_table(self, url):
         self.table = {}
         try:
-            response = requests.get(url)
-            ent_arr = response.json()
+            req = [grequests.get(url)]
+            res = grequests.map(set(req))[0]
+            ent_arr = res.json()
             for ent in ent_arr:
                 entry = RepositoryEntry.from_dict(ent)
                 self.table[entry.dataset] = entry
