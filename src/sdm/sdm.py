@@ -1,19 +1,46 @@
 #! /usr/bin/env python
-"""
-   Copyright 2016 The Trustees of University of Arizona
 
-   Licensed under the Apache License, Version 2.0 (the "License" );
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+##  @file sdm.py
+#   The Syndicate Dataset Manager tool
+#
+#   See also
+#   @ref sdm
+#
+#   @author Illyoung Choi
+#
+#
+#   @copyright Copyright 2016 The Trustees of University of Arizona\n
+#   Licensed under the Apache License, Version 2.0 (the "License" );
+#   you may not use this file except in compliance with the License.\n
+#   You may obtain a copy of the License at
+#   http://www.apache.org/licenses/LICENSE-2.0\n
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-"""
+##  @page sdm
+#   The Syndicate Dataset Manager
+#
+#   Mount from a list of available Syndicate datasets
+#
+#   @section synopsis SYNOPSIS
+#   sdm [LIST/STATUS OPTION]
+#
+#   sdm [MOUNT/UNMOUNT OPTION] DATASET [PATH]
+#
+#   @section description DESCRIPTION
+#   Mount from a list of available public datasets.
+#
+#   @section options OPTIONS
+#   @copydetails fill_commands_table()
+#
+#   @section author AUTHOR
+#   Written by Illyoung Choi
+#
+#   @section see SEE ALSO
+#   sdm.py
 
 import os
 import os.path
@@ -45,9 +72,20 @@ COMMANDS_TABLE = {}
 
 
 def fill_options_table():
+    """
+    Additional options
+    """
     OPTIONS_TABLE["log"] = getattr(logging, "WARNING", None)
     OPTIONS_TABLE["config"] = SDM_CONFIG_DIR
 
+## @brief Fill a table with the commands listed below
+#
+#       list_datasets, ls, list\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;List available DATASETS to mount\n\n
+#       show_mounts, ps, status\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Show mount status, shows information such as mount ID, DATASET, path, and if mounted\n\n
+#       mount DATASET [PATH], mnt DATASET [PATH]\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mount a DATASET\n\n
+#       mmount DATASETS, mmount DATASETS\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mount multi-datasets\n\n
+#       unmount DATASET|PATH|ID, umount DATASET|PATH|ID, umnt DATASET|PATH|ID\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Unmount a DATASET\n\n
+#       munmount DATASETS, mumount DATASETS, mumnt DATASETS\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Unmount multi-datasets\n\n
 
 def fill_commands_table():
     COMMANDS.append((["list_datasets", "ls", "list"], list_datasets, "list available datasets"))
@@ -134,6 +172,9 @@ def show_mounts(argv):
 
 
 def process_mount_dataset(dataset, mount_path):
+    """
+    Begin the dataset mount process
+    """
     entry = repository.get_entry(dataset)
     if entry:
         username = entry.username
@@ -193,9 +234,13 @@ def process_mount_dataset(dataset, mount_path):
 
 
 def mount_dataset(argv):
-    # args
-    # 1. dataset name
-    # 2. mount_path (optional)
+    """
+    Mount the dataset
+
+    args:
+        arg1: dataset name
+        arg2: mount_path (optional)
+    """
     if len(argv) >= 1:
         dataset = argv[0].strip().lower()
 
@@ -218,8 +263,12 @@ def mount_dataset(argv):
 
 
 def mount_multi_dataset(argv):
-    # args
-    # 1. dataset name
+    """
+    Mount a multi dataset
+
+    args:
+        arg1: dataset name
+    """
     if len(argv) >= 1:
         try:
             bimpl = sdm_backends.Backends.get_backend_instance(backend, config.get_backend_config(backend))
@@ -242,6 +291,9 @@ def mount_multi_dataset(argv):
 
 
 def process_unmount_dataset(record_id, cleanup=False):
+    """
+    Unmount a dataset
+    """
     try:
         records = mount_table.get_records_by_record_id(record_id)
         if len(records) == 1:
@@ -273,8 +325,12 @@ def process_unmount_dataset(record_id, cleanup=False):
 
 
 def unmount_dataset(argv):
-    # args
-    # 1. dataset name OR mount_path
+    """
+    Unmount a dataset
+
+    args:
+        arg1: dataset name OR mount_path
+    """
     if len(argv) >= 1:
         cleanup = False
         if len(argv) >= 2:
@@ -318,8 +374,12 @@ def unmount_dataset(argv):
 
 
 def unmount_multi_dataset(argv):
-    # args
-    # 1. dataset name OR mount_path
+    """
+    Unmount a multi dataset
+
+    args:
+        arg1: dataset name OR mount_path
+    """
     if len(argv) >= 1:
         cleanup = False
         res = 0
@@ -367,6 +427,9 @@ def unmount_multi_dataset(argv):
 
 
 def clean_mounts(argv):
+    """
+    Clean or unmount mounted datasets
+    """
     records = mount_table.list_records()
     for rec in records:
         if rec.status == sdm_mount_table.MountRecordStatus.UNMOUNTED:
@@ -375,6 +438,9 @@ def clean_mounts(argv):
 
 
 def show_help(argv=None):
+    """
+    Print the standard help page
+    """
     if argv:
         if "list_datasets" in argv:
             karr, _, desc = COMMANDS_TABLE["list_datasets"]
@@ -446,6 +512,9 @@ def show_help(argv=None):
 
 
 def run(command, argv):
+    """
+    Run
+    """
     if command is None:
         raise ValueError("No command is given")
 
@@ -459,6 +528,9 @@ def run(command, argv):
 
 
 def set_option(k, v="True"):
+    """
+    Set the option chosen, i.e. log, backend, config
+    """
     if k == "log":
         OPTIONS_TABLE[k] = getattr(logging, v.upper(), None)
     elif k == "backend":
@@ -468,6 +540,9 @@ def set_option(k, v="True"):
 
 
 def extract_options(argv):
+    """
+    Extract command-line options
+    """
     new_argv = []
     for arg in argv:
         if arg.startswith("--"):
@@ -487,6 +562,9 @@ def extract_options(argv):
 
 
 def process_options():
+    """
+    Process the options: log, config, backend
+    """
     # do log first
     for k in OPTIONS_TABLE:
         if k == "log":
@@ -526,6 +604,9 @@ def process_options():
 
 
 def main(argv=None):
+    """
+    Main
+    """
     if argv is None:
         argv = sys.argv[1:]
 
