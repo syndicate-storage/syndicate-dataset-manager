@@ -8,9 +8,6 @@ export PREFIX=/usr
 
 override_dh_auto_build:
 	dh_auto_build
-	pwd
-	ls -la
-	if [ ! -f docs/Makefile ]; then git submodule init && git submodule update; fi
 	mkdir -p docs/sources
 	if [ ! -d docs/sources/syndicate-dataset-manager ]; then cd docs/sources && git config --global http.sslVerify false && git clone https://github.com/syndicate-storage/syndicate-dataset-manager; cd -; fi
 	cd docs && $(MAKE) -C docs docs
