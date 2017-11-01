@@ -10,7 +10,7 @@ override_dh_auto_build:
 	dh_auto_build
 	mkdir -p docs/sources
 	if [ ! -d docs/sources/syndicate-dataset-manager ]; then cd docs/sources && git config --global http.sslVerify false && git clone https://github.com/syndicate-storage/syndicate-dataset-manager; cd -; fi
-	pip install doxypypy
+	pip install --install-option="--prefix=usr" doxypypy
 	$(MAKE) -C docs docs
 
 override_dh_auto_install:
