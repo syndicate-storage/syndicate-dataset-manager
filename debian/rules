@@ -10,7 +10,8 @@ override_dh_auto_build:
 	dh_auto_build
 	mkdir -p docs/sources
 	if [ ! -d docs/sources/syndicate-dataset-manager ]; then cd docs/sources && git config --global http.sslVerify false && git clone https://github.com/syndicate-storage/syndicate-dataset-manager; cd -; fi
-	pip install --install-option="--prefix=$(CURDIR)/debian/syndicate-dataset-manager/usr" doxypypy
+	mkdir -p $(CURDIR)/debian/syndicate-dataset-manager/usr
+	export PYTHONPATH=$(CURDIR)/debian/syndicate-dataset-manager/usr && easy_install --install-dir=$(CURDIR)/debian/syndicate-dataset-manager/usr doxypypy
 	$(MAKE) -C docs docs DOXYPYPY_PATH=$(CURDIR)/debian/syndicate-dataset-manager/usr/bin
 
 override_dh_auto_install:

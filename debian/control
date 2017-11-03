@@ -3,7 +3,7 @@ Section: utils
 Priority: optional
 Maintainer: Zack Williams, University of Arizona <zdw@cs.arizona.edu>
 Standards-Version: 3.9.5
-Build-Depends: debhelper (>= 9), pkg-config, python-prettytable, python-psutil, python-requests, python-setuptools, git, doxygen, graphviz, python-pip
+Build-Depends: debhelper (>= 9), pkg-config, python-prettytable, python-psutil, python-requests, python-setuptools, git, doxygen, graphviz
 
 Package: syndicate-dataset-manager
 Architecture: all
