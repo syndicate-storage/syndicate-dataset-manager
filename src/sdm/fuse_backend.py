@@ -33,6 +33,7 @@ from os.path import expanduser
 DEFAULT_MOUNT_PATH = "~/sdm_mounts"
 DEFAULT_SYNDICATE_DEBUG_MODE = True
 DEFAULT_SYNDICATE_DEBUG_LEVEL = 3
+DEFAULT_SYNDICATE_LOCAL_CACHE_SIZE = 2*1024*1024*1024 # 20GB
 
 SYNDICATEFS_PROCESS_NAME = "syndicatefs"
 SYNDICATE_CONFIG_ROOT_PATH = "~/.sdm/mounts/"
@@ -261,6 +262,11 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
                 sdm_util.log_message("Successfully set up Syndicate for an user, %s" % username)
             finally:
                 os.remove(user_pkey_path)
+
+            # set local cache size
+            with open(config_path, "a") as cf:
+                cf.write("\n[gateway]\n")
+                cf.write("cache_size_limit=%d\n" % DEFAULT_SYNDICATE_LOCAL_CACHE_SIZE)
 
         command_reload_user_cert = "%s reload_user_cert %s" % (
             syndicate_command,
