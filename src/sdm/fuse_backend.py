@@ -33,7 +33,7 @@ from os.path import expanduser
 DEFAULT_MOUNT_PATH = "~/sdm_mounts"
 DEFAULT_SYNDICATE_DEBUG_MODE = True
 DEFAULT_SYNDICATE_DEBUG_LEVEL = 3
-DEFAULT_SYNDICATE_LOCAL_CACHE_SIZE = 2*1024*1024*1024 # 20GB
+DEFAULT_SYNDICATE_CACHE_MAX = 2*1024*1024*1024 # 20GB
 
 SYNDICATEFS_PROCESS_NAME = "syndicatefs"
 SYNDICATE_CONFIG_ROOT_PATH = "~/.sdm/mounts/"
@@ -51,6 +51,7 @@ class FuseBackendConfig(sdm_absbackends.AbstractBackendConfig):
         self.default_mount_path = DEFAULT_MOUNT_PATH
         self.syndicate_debug_mode = DEFAULT_SYNDICATE_DEBUG_MODE
         self.syndicate_debug_level = DEFAULT_SYNDICATE_DEBUG_LEVEL
+        self.syndicate_cache_max = DEFAULT_SYNDICATE_CACHE_MAX
 
     @classmethod
     def from_dict(cls, d):
@@ -58,6 +59,7 @@ class FuseBackendConfig(sdm_absbackends.AbstractBackendConfig):
         config.default_mount_path = d["default_mount_path"]
         config.syndicate_debug_mode = d["syndicate_debug_mode"]
         config.syndicate_debug_level = d["syndicate_debug_level"]
+        config.syndicate_cache_max = d["syndicate_cache_max"]
         return config
 
     @classmethod
@@ -68,7 +70,8 @@ class FuseBackendConfig(sdm_absbackends.AbstractBackendConfig):
         return json.dumps({
             "default_mount_path": self.default_mount_path,
             "syndicate_debug_mode": self.syndicate_debug_mode,
-            "syndicate_debug_level": self.syndicate_debug_level
+            "syndicate_debug_level": self.syndicate_debug_level,
+            "syndicate_cache_max": self.syndicate_cache_max
         })
 
     def __eq__(self, other):
@@ -230,7 +233,7 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
                 "> error code: %d, %s" % (err.returncode, err.output)
             )
 
-    def _setup_syndicate(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, debug_mode=False):
+    def _setup_syndicate(self, mount_id, dataset, username, user_pkey, gateway_name, ms_host, debug_mode=False, cache_size_limit=DEFAULT_SYNDICATE_CACHE_MAX):
         config_root_path = self._make_syndicate_configuration_root_path(mount_id)
         if not os.path.exists(config_root_path):
             os.makedirs(config_root_path, 0755)
@@ -266,7 +269,7 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
             # set local cache size
             with open(config_path, "a") as cf:
                 cf.write("\n[gateway]\n")
-                cf.write("cache_size_limit=%d\n" % DEFAULT_SYNDICATE_LOCAL_CACHE_SIZE)
+                cf.write("cache_size_limit=%d\n" % cache_size_limit)
 
         command_reload_user_cert = "%s reload_user_cert %s" % (
             syndicate_command,
@@ -330,7 +333,7 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
 
     def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path):
         sdm_util.print_message("Mounting a dataset %s to %s" % (dataset, mount_path), True)
-        self._setup_syndicate(mount_id, dataset, username, user_pkey, gateway_name, ms_host, self.backend_config.syndicate_debug_mode)
+        self._setup_syndicate(mount_id, dataset, username, user_pkey, gateway_name, ms_host, self.backend_config.syndicate_debug_mode, self.backend_config.syndicate_cache_max)
         self._mount_syndicatefs(mount_id, dataset, gateway_name, mount_path, self.backend_config.syndicate_debug_mode, self.backend_config.syndicate_debug_level)
         sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
 
