@@ -114,12 +114,14 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
         matching_processes = []
         for p in psutil.process_iter():
             try:
-                if inspect.ismethod(p.name):
-                    if p.name() == name:
-                        matching_processes.append(p)
+                pcmdline = ""
+                if inspect.ismethod(p.cmdline):
+                    pcmdline = p.cmdline()
                 else:
-                    if p.name == name:
-                        matching_processes.append(p)
+                    pcmdline = p.cmdline
+
+                if name in pcmdline:
+                    matching_processes.append(p)
             except psutil.NoSuchProcess:
                 pass
         return matching_processes
