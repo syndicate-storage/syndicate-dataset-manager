@@ -34,6 +34,7 @@ DEFAULT_MOUNT_PATH = "~/sdm_mounts"
 DEFAULT_SYNDICATE_DEBUG_MODE = True
 DEFAULT_SYNDICATE_DEBUG_LEVEL = 3
 DEFAULT_SYNDICATE_CACHE_MAX = 2*1024*1024*1024 # 20GB
+DEFAULT_USE_VALGRIND = False
 
 SYNDICATEFS_PROCESS_NAME = "syndicatefs"
 SYNDICATE_CONFIG_ROOT_PATH = "~/.sdm/mounts/"
@@ -52,6 +53,7 @@ class FuseBackendConfig(sdm_absbackends.AbstractBackendConfig):
         self.syndicate_debug_mode = DEFAULT_SYNDICATE_DEBUG_MODE
         self.syndicate_debug_level = DEFAULT_SYNDICATE_DEBUG_LEVEL
         self.syndicate_cache_max = DEFAULT_SYNDICATE_CACHE_MAX
+        self.use_valgrind = DEFAULT_USE_VALGRIND
 
     @classmethod
     def from_dict(cls, d):
@@ -60,6 +62,7 @@ class FuseBackendConfig(sdm_absbackends.AbstractBackendConfig):
         config.syndicate_debug_mode = d["syndicate_debug_mode"]
         config.syndicate_debug_level = d["syndicate_debug_level"]
         config.syndicate_cache_max = d["syndicate_cache_max"]
+        config.use_valgrind = d["use_valgrind"]
         return config
 
     @classmethod
@@ -71,7 +74,8 @@ class FuseBackendConfig(sdm_absbackends.AbstractBackendConfig):
             "default_mount_path": self.default_mount_path,
             "syndicate_debug_mode": self.syndicate_debug_mode,
             "syndicate_debug_level": self.syndicate_debug_level,
-            "syndicate_cache_max": self.syndicate_cache_max
+            "syndicate_cache_max": self.syndicate_cache_max,
+            "use_valgrind": self.use_valgrind
         })
 
     def __eq__(self, other):
@@ -299,7 +303,7 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
             shutil.rmtree(config_root_path)
             sdm_util.log_message("Successfully removed Syndicate at %s" % config_root_path)
 
-    def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path, debug_mode=False, debug_level=1):
+    def _mount_syndicatefs(self, mount_id, dataset, gateway_name, mount_path, debug_mode=False, debug_level=1, use_valgrind=False):
         sdm_util.log_message("Mounting syndicatefs, %s to %s" % (dataset, mount_path))
 
         abs_mount_path = sdm_util.get_abs_path(mount_path)
@@ -311,7 +315,11 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
         syndicatefs_command = self._make_syndicatefs_command(mount_id, debug_mode, debug_level)
 
         #${SYNDICATEFS_CMD} -f -u ANONYMOUS -v ${VOLUME_NAME} -g ${UG_NAME} ${SYNDICATEFS_DATASET_MOUNT_DIR} &> /tmp/syndicate_${VOLUME_NAME}.log&
-        command_mount = "%s -f -u ANONYMOUS -v %s -g %s %s" % (
+        command_format = "%s -f -u ANONYMOUS -v %s -g %s %s"
+        if debug_mode and use_valgrind:
+            command_format = "valgrind " + command_format
+
+        command_mount = command_format % (
             syndicatefs_command,
             dataset,
             gateway_name,
@@ -336,7 +344,7 @@ class FuseBackend(sdm_absbackends.AbstractBackend):
     def mount(self, mount_id, ms_host, dataset, username, user_pkey, gateway_name, mount_path):
         sdm_util.print_message("Mounting a dataset %s to %s" % (dataset, mount_path), True)
         self._setup_syndicate(mount_id, dataset, username, user_pkey, gateway_name, ms_host, self.backend_config.syndicate_debug_mode, self.backend_config.syndicate_cache_max)
-        self._mount_syndicatefs(mount_id, dataset, gateway_name, mount_path, self.backend_config.syndicate_debug_mode, self.backend_config.syndicate_debug_level)
+        self._mount_syndicatefs(mount_id, dataset, gateway_name, mount_path, self.backend_config.syndicate_debug_mode, self.backend_config.syndicate_debug_level, self.backend_config.use_valgrind)
         sdm_util.print_message("A dataset %s is mounted to %s" % (dataset, mount_path), True)
 
     def check_mount(self, mount_id, dataset, mount_path):
