@@ -95,7 +95,7 @@ class Repository(object):
     def load_table(self, url):
         self.table = {}
         try:
-            req = [grequests.get(url)]
+            req = [grequests.get(url, verify=False)]
             res = grequests.map(set(req))[0]
             ent_arr = res.json()
             for ent in ent_arr:
