@@ -78,17 +78,10 @@ def fill_options_table():
     OPTIONS_TABLE["log"] = getattr(logging, "WARNING", None)
     OPTIONS_TABLE["config"] = SDM_CONFIG_DIR
 
-## @brief Fill a table with the commands listed below
-#
-#       list_datasets, ls, list\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;List available DATASETS to mount\n\n
-#       show_mounts, ps, status\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Show mount status, shows information such as mount ID, DATASET, path, and if mounted\n\n
-#       mount DATASET [PATH], mnt DATASET [PATH]\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mount a DATASET\n\n
-#       mmount DATASETS, mmount DATASETS\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mount multi-datasets\n\n
-#       unmount DATASET|PATH|ID, umount DATASET|PATH|ID, umnt DATASET|PATH|ID\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Unmount a DATASET\n\n
-#       munmount DATASETS, mumount DATASETS, mumnt DATASETS\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Unmount multi-datasets\n\n
 
 def fill_commands_table():
-    COMMANDS.append((["list_datasets", "ls", "list"], list_datasets, "list available datasets"))
+    COMMANDS.append((["list_datasets", "ls", "list"], list_datasets, "list datasets"))
+    COMMANDS.append((["search_datasets", "find", "search", "grep"], search_datasets, "search datasets"))
     COMMANDS.append((["show_mounts", "ps", "status"], show_mounts, "show mount status"))
     COMMANDS.append((["mount", "mnt"], mount_dataset, "mount a dataset"))
     COMMANDS.append((["mmount", "mmnt"], mount_multi_dataset, "mount multi-datasets"))
@@ -125,6 +118,36 @@ def list_datasets(argv):
             return 0
     else:
         show_help(["list_datasets"])
+        return 1
+
+
+def search_datasets(argv):
+    """
+    Search Datasets
+
+    args:
+        arg1: query
+    """
+    if len(argv) >= 1:
+        query = argv[0].strip().lower()
+
+        entries = repository.list_entries(query)
+        cnt = 0
+        tbl = PrettyTable()
+        tbl.field_names = ["DATASET", "DESCRIPTION"]
+        for ent in entries:
+            cnt += 1
+            tbl.add_row([ent.dataset, ent.description])
+
+        sdm_util.print_message(tbl)
+
+        if cnt == 0:
+            sdm_util.print_message("No matching dataset")
+            return 0
+        else:
+            return 0
+    else:
+        show_help(["search_datasets"])
         return 1
 
 
@@ -446,6 +469,13 @@ def show_help(argv=None):
             karr, _, desc = COMMANDS_TABLE["list_datasets"]
             sdm_util.print_message("command : %s" % (" | ".join(karr)))
             sdm_util.print_message("usage : sdm ls")
+            sdm_util.print_message("")
+            sdm_util.print_message(desc)
+            return 0
+        elif "search_datasets" in argv:
+            karr, _, desc = COMMANDS_TABLE["search_datasets"]
+            sdm_util.print_message("command : %s" % (" | ".join(karr)))
+            sdm_util.print_message("usage : sdm search <keyword>")
             sdm_util.print_message("")
             sdm_util.print_message(desc)
             return 0

@@ -110,8 +110,24 @@ class Repository(object):
             return self.table[k]
         return None
 
-    def list_entries(self):
+    def check_match(self, query, entry):
+        if query in entry.dataset.lower():
+            return True
+
+        if query in username.lower():
+            return True
+
+        if query in description.lower():
+            return True
+
+        return False
+
+    def list_entries(self, query=None):
         entries = []
         for k in self.table.keys():
-            entries.append(self.table[k])
+            if query:
+                if self.check_match(query, self.table[k]):
+                    entries.append(self.table[k])
+            else:
+                entries.append(self.table[k])
         return entries
