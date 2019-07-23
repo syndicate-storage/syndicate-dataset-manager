@@ -11,6 +11,7 @@ Commands
 - `unmount` : unmount
 - `munmount` : unmount multi
 - `ls` : show public datasets available
+- `find` : search public datasets that contain the given keyword
 - `ps` : show current mount status
 - `clean` : clear mount states (local caches and ETC.)
 
